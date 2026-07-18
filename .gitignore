@@ -5,5 +5,5 @@ __pycache__/
 *.log
 uploads/
 scheduled_jobs.json
-BambuTiming.app/
+BambuScheduler.app/
 BambuMenu/.build/

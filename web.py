@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BambuTiming backend - Upload, schedule, and control prints via MQTT + FTP (LAN only)."""
+"""BambuScheduler backend - Upload, schedule, and control prints via MQTT + FTP (LAN only)."""
 
 import os
 import ssl
@@ -21,7 +21,7 @@ load_dotenv()
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB max upload
 
-CONFIG_FILE = Path.home() / "Library" / "Application Support" / "BambuTiming" / "config.json"
+CONFIG_FILE = Path.home() / "Library" / "Application Support" / "BambuScheduler" / "config.json"
 MQTT_PORT = 8883
 FTP_PORT = 990
 

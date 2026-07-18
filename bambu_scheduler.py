@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""BambuTiming CLI - Schedule .3mf prints at specific times.
+"""BambuScheduler CLI - Schedule .3mf prints at specific times.
 100% local control via MQTT + FTP (no cloud).
 """
 

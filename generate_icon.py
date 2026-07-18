@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a modern app icon for BambuMenu - 3D printing scheduler."""
+"""Generate a modern app icon for BambuScheduler - 3D printing scheduler."""
 
 from PIL import Image, ImageDraw
 import math

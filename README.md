@@ -1,4 +1,4 @@
-# BambuTiming
+# BambuScheduler
 
 A macOS menu bar app for scheduling and monitoring prints on Bambu Lab printers over LAN. No cloud required.
 
@@ -22,8 +22,8 @@ A macOS menu bar app for scheduling and monitoring prints on Bambu Lab printers 
 ### 1. Clone and install dependencies
 
 ```bash
-git clone https://github.com/yourusername/bambu-timing.git
-cd bambu-timing
+git clone https://github.com/brunomunizaf/BambuScheduler.git
+cd BambuScheduler
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -39,37 +39,37 @@ swift build -c release
 ### 3. Create the app bundle
 
 ```bash
-mkdir -p BambuTiming.app/Contents/MacOS
-mkdir -p BambuTiming.app/Contents/Resources
-cp BambuMenu/.build/release/BambuTiming BambuTiming.app/Contents/MacOS/
+mkdir -p BambuScheduler.app/Contents/MacOS
+mkdir -p BambuScheduler.app/Contents/Resources
+cp BambuMenu/.build/release/BambuScheduler BambuScheduler.app/Contents/MacOS/
 ```
 
-Copy the provided `Info.plist` into `BambuTiming.app/Contents/` and optionally generate the icon:
+Copy the provided `Info.plist` into `BambuScheduler.app/Contents/` and optionally generate the icon:
 
 ```bash
 python3 generate_icon.py
-cp /tmp/AppIcon.icns BambuTiming.app/Contents/Resources/
+cp /tmp/AppIcon.icns BambuScheduler.app/Contents/Resources/
 ```
 
 ### 4. Install the background service
 
-Edit `com.bambu.timing.plist` and update the paths to match your install location, then:
+Edit `com.bambu.scheduler.plist` and update the paths to match your install location, then:
 
 ```bash
-cp com.bambu.timing.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.bambu.timing.plist
+cp com.bambu.scheduler.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.bambu.scheduler.plist
 ```
 
 ### 5. Launch
 
-Open `BambuTiming.app`. On first launch, it will show a setup screen where you enter your printer's:
+Open `BambuScheduler.app`. On first launch, it will show a setup screen where you enter your printer's:
 
 - **IP address** — Found in Settings > Network on the printer
 - **Access Code** — Found in Settings > LAN on the printer
 - **Serial Number** — Found in Settings > Device Info or on the printer's sticker
 - **Name** (optional) — A custom name for your printer
 
-Settings are saved to `~/Library/Application Support/BambuTiming/config.json`.
+Settings are saved to `~/Library/Application Support/BambuScheduler/config.json`.
 
 ## Usage
 

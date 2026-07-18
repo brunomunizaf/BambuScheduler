@@ -9,7 +9,7 @@ struct PrinterConfig: Codable {
     var printerName: String
 
     static let configDir = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/BambuTiming")
+        .appendingPathComponent("Library/Application Support/BambuScheduler")
     static let configFile = configDir.appendingPathComponent("config.json")
 
     static func load() -> PrinterConfig? {
@@ -34,7 +34,7 @@ struct PrinterConfig: Codable {
 // MARK: - App
 
 @main
-struct BambuTimingApp: App {
+struct BambuSchedulerApp: App {
     @StateObject private var vm = PrinterViewModel()
 
     init() {
@@ -59,10 +59,10 @@ struct BambuTimingApp: App {
 // MARK: - Service Manager
 
 enum ServiceManager {
-    private static let plistPath = NSString("~/Library/LaunchAgents/com.bambu.timing.plist").expandingTildeInPath
+    private static let plistPath = NSString("~/Library/LaunchAgents/com.bambu.scheduler.plist").expandingTildeInPath
 
     static func loadBackend() {
-        let status = run("/bin/launchctl", arguments: ["list", "com.bambu.timing"])
+        let status = run("/bin/launchctl", arguments: ["list", "com.bambu.scheduler"])
         if status != 0 {
             run("/bin/launchctl", arguments: ["load", plistPath])
         }

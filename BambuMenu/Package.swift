@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "BambuTiming",
+    name: "BambuScheduler",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "BambuTiming",
+            name: "BambuScheduler",
             path: "Sources"
         ),
     ]
