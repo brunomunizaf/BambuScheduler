@@ -1,0 +1,5 @@
+paho-mqtt>=2.0,<3.0
+requests>=2.31
+APScheduler>=3.10,<4.0
+python-dotenv>=1.0
+flask>=3.0

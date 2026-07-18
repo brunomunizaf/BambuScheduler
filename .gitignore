@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+*.log
+uploads/
+scheduled_jobs.json
+BambuTiming.app/
+BambuMenu/.build/

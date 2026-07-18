@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bambu Lab A1 Scheduler</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; padding: 20px; max-width: 900px; margin: 0 auto; }
+        h1 { color: #4ade80; margin-bottom: 20px; font-size: 1.5rem; }
+        h2 { color: #94a3b8; font-size: 1rem; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .card { background: #1a1d27; border-radius: 12px; padding: 20px; margin-bottom: 16px; border: 1px solid #2a2d37; }
+
+        /* Status */
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 1.8rem; font-weight: 700; color: #fff; }
+        .stat-label { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+        .state-IDLE .stat-value, .state-FINISH .stat-value { color: #4ade80; }
+        .state-RUNNING .stat-value { color: #60a5fa; }
+        .state-PREPARE .stat-value { color: #fbbf24; }
+        .state-PAUSE .stat-value { color: #f97316; }
+        .state-FAILED .stat-value { color: #ef4444; }
+
+        /* Progress bar */
+        .progress-bar { width: 100%; height: 8px; background: #2a2d37; border-radius: 4px; margin: 16px 0 8px; overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4ade80, #22d3ee); border-radius: 4px; transition: width 0.5s ease; }
+
+        /* Controls */
+        .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        button { padding: 10px 20px; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+        button:hover { transform: translateY(-1px); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .btn-stop { background: #ef4444; color: #fff; }
+        .btn-stop:hover { background: #dc2626; }
+        .btn-pause { background: #f97316; color: #fff; }
+        .btn-pause:hover { background: #ea580c; }
+        .btn-resume { background: #4ade80; color: #000; }
+        .btn-resume:hover { background: #22c55e; }
+        .btn-refresh { background: #334155; color: #e0e0e0; }
+        .btn-print { background: #3b82f6; color: #fff; }
+        .btn-print:hover { background: #2563eb; }
+        .btn-print-now { background: #4ade80; color: #000; }
+        .btn-print-now:hover { background: #22c55e; }
+        .btn-schedule { background: #8b5cf6; color: #fff; }
+        .btn-schedule:hover { background: #7c3aed; }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-cancel { background: #64748b; color: #fff; }
+
+        /* Upload */
+        .upload-zone { border: 2px dashed #334155; border-radius: 8px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: #4ade80; background: #1e2330; }
+        .upload-zone input { display: none; }
+
+        /* Form */
+        select, input[type="datetime-local"] { background: #0f1117; border: 1px solid #334155; color: #e0e0e0; padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; width: 100%; }
+        select:focus, input:focus { outline: none; border-color: #4ade80; }
+        label { display: block; margin-bottom: 6px; color: #94a3b8; font-size: 0.85rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .form-group { margin-bottom: 12px; }
+        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .checkbox-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: #4ade80; }
+
+        /* AMS */
+        .ams-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+        .ams-slot { padding: 12px 8px; border-radius: 8px; text-align: center; border: 2px solid #334155; cursor: pointer; transition: all 0.2s; }
+        .ams-slot:hover { border-color: #64748b; }
+        .ams-slot.selected { border-color: #4ade80; background: #1e2e20; }
+        .ams-slot.empty { opacity: 0.3; cursor: not-allowed; }
+        .ams-color { width: 24px; height: 24px; border-radius: 50%; margin: 0 auto 6px; border: 2px solid #444; }
+        .ams-type { font-size: 0.75rem; color: #94a3b8; }
+        .ams-id { font-size: 0.85rem; font-weight: 600; }
+
+        /* Files & Jobs */
+        .file-list { max-height: 200px; overflow-y: auto; }
+        .file-item, .job-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 6px; margin-bottom: 4px; background: #0f1117; }
+        .file-item:hover, .job-item:hover { background: #1e2330; }
+        .file-name { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; margin-right: 8px; }
+        .job-time { font-size: 0.75rem; color: #64748b; }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 14px 20px; border-radius: 8px; font-size: 0.9rem; z-index: 100; animation: slideIn 0.3s ease; }
+        .toast-ok { background: #166534; color: #4ade80; }
+        .toast-err { background: #7f1d1d; color: #fca5a5; }
+        @keyframes slideIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        .hidden { display: none; }
+        .section-title { display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <h1>Bambu Lab A1 Scheduler</h1>
+
+    <!-- Status -->
+    <div class="card" id="status-card">
+        <div class="section-title">
+            <h2>Status</h2>
+            <button class="btn-refresh btn-sm" onclick="refreshStatus()">Atualizar</button>
+        </div>
+        <div class="status-grid" id="status-grid">
+            <div class="stat" id="state-box"><div class="stat-value" id="s-state">--</div><div class="stat-label">Estado</div></div>
+            <div class="stat"><div class="stat-value" id="s-progress">--%</div><div class="stat-label">Progresso</div></div>
+            <div class="stat"><div class="stat-value" id="s-remaining">--</div><div class="stat-label">Restante</div></div>
+            <div class="stat"><div class="stat-value" id="s-nozzle">--</div><div class="stat-label">Nozzle</div></div>
+            <div class="stat"><div class="stat-value" id="s-bed">--</div><div class="stat-label">Mesa</div></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+        <div id="s-task" style="font-size:0.8rem;color:#64748b;margin-bottom:8px;"></div>
+        <div class="btn-row">
+            <button class="btn-pause" onclick="pausePrint()">Pausar</button>
+            <button class="btn-resume" onclick="resumePrint()">Retomar</button>
+            <button class="btn-stop" onclick="if(confirm('Abortar impressao?')) stopPrint()">Abortar</button>
+        </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="card">
+        <h2>Upload .3mf</h2>
+        <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+            <input type="file" id="file-input" accept=".3mf" onchange="uploadFile(this.files[0])">
+            <p>Clique ou arraste um arquivo .3mf fatiado</p>
+        </div>
+    </div>
+
+    <!-- Print -->
+    <div class="card">
+        <h2>Imprimir</h2>
+        <div class="form-group">
+            <label>Arquivo</label>
+            <select id="print-file">
+                {% for f in files %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
+            </select>
+        </div>
+
+        <h2 style="margin-top:16px;">AMS Slots</h2>
+        <div class="ams-slots" id="ams-slots">
+            <div style="color:#64748b;font-size:0.85rem;grid-column:1/-1;text-align:center;">Clique "Atualizar" no status para carregar AMS</div>
+        </div>
+        <div class="checkbox-row">
+            <input type="checkbox" id="use-ams" checked>
+            <label for="use-ams" style="margin:0">Usar AMS</label>
+        </div>
+        <div class="checkbox-row">
+            <input type="checkbox" id="timelapse">
+            <label for="timelapse" style="margin:0">Timelapse</label>
+        </div>
+
+        <div class="form-group" style="margin-top:12px;">
+            <label>Agendar para (deixe vazio para imprimir agora)</label>
+            <input type="datetime-local" id="schedule-time">
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-print-now" onclick="printNow()">Imprimir Agora</button>
+            <button class="btn-schedule" onclick="schedulePrint()">Agendar</button>
+        </div>
+    </div>
+
+    <!-- Scheduled Jobs -->
+    <div class="card" id="jobs-card">
+        <h2>Agendamentos</h2>
+        <div id="jobs-list">
+            {% if jobs %}
+                {% for job in jobs %}
+                <div class="job-item">
+                    <div>
+                        <div class="file-name">{{ job.name }}</div>
+                        <div class="job-time">{{ job.next_run }}</div>
+                    </div>
+                    <button class="btn-sm btn-danger" onclick="cancelJob('{{ job.id }}')">Cancelar</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="color:#64748b;font-size:0.85rem;">Nenhum agendamento</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Files -->
+    <div class="card">
+        <h2>Arquivos</h2>
+        <div class="file-list" id="file-list">
+            {% for f in files %}
+            <div class="file-item">
+                <span class="file-name">{{ f }}</span>
+                <button class="btn-sm btn-cancel" onclick="deleteFile('{{ f }}')">Remover</button>
+            </div>
+            {% endfor %}
+            {% if not files %}
+                <div style="color:#64748b;font-size:0.85rem;">Nenhum arquivo</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Guide -->
+    <div class="card" style="border-color:#334155;">
+        <h2 style="cursor:pointer;" onclick="document.getElementById('guide-content').classList.toggle('hidden')">Guia de Configuracao &#9660;</h2>
+        <div id="guide-content" class="hidden" style="margin-top:12px;font-size:0.85rem;line-height:1.7;color:#94a3b8;">
+            <p><strong style="color:#4ade80;">1. Developer Mode (obrigatorio)</strong></p>
+            <p>Na tela da impressora: <code>Settings &gt; General &gt; Developer Mode &gt; ON</code></p>
+            <p style="margin-bottom:12px;">Sem isso, a impressora rejeita comandos MQTT de print (erro 84033543 "assinatura invalida").</p>
+
+            <p><strong style="color:#4ade80;">2. LAN Only Mode (opcional)</strong></p>
+            <p>Na tela: <code>Settings &gt; General &gt; LAN Only Mode</code></p>
+            <p style="margin-bottom:12px;">Desconecta da cloud Bambu. Opcional, mas garante que a impressora aceita somente comandos locais.</p>
+
+            <p><strong style="color:#4ade80;">3. Dados necessarios (.env)</strong></p>
+            <ul style="margin-left:20px;margin-bottom:12px;">
+                <li><strong>PRINTER_IP</strong> &mdash; <code>Settings &gt; Network</code> na tela da impressora</li>
+                <li><strong>PRINTER_ACCESS_CODE</strong> &mdash; <code>Settings &gt; LAN</code> (codigo de 8 digitos)</li>
+                <li><strong>PRINTER_SERIAL</strong> &mdash; <code>Settings &gt; Device Info</code> ou adesivo fisico</li>
+            </ul>
+
+            <p><strong style="color:#4ade80;">4. Arquivo .3mf fatiado</strong></p>
+            <p>O arquivo deve ser <strong>fatiado no Bambu Studio</strong> antes do upload.</p>
+            <p>No Bambu Studio: <code>File &gt; Export &gt; Export plate sliced file (.3mf)</code></p>
+            <p style="margin-bottom:12px;">Arquivos .3mf nao fatiados (sem gcode) serao rejeitados pelo upload.</p>
+
+            <p><strong style="color:#4ade80;">5. AMS Mapping</strong></p>
+            <p>Selecione o slot da AMS correspondente ao filamento desejado.</p>
+            <p>Slots 0-3 correspondem as posicoes fisicas da AMS Lite, da esquerda para direita.</p>
+            <p style="margin-bottom:12px;">Desmarque "Usar AMS" para usar o filamento do spool externo.</p>
+
+            <p><strong style="color:#4ade80;">6. Agendamento</strong></p>
+            <p>Selecione uma data/hora futura e clique "Agendar". O servidor fara upload e enviara o comando no horario marcado.</p>
+            <p>O servidor <strong>precisa ficar rodando</strong> ate o horario agendado (nao feche o terminal).</p>
+        </div>
+    </div>
+
+<script>
+let selectedSlot = 0;
+let amsTrays = [];
+
+function toast(msg, ok=true) {
+    const t = document.createElement('div');
+    t.className = 'toast ' + (ok ? 'toast-ok' : 'toast-err');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+async function api(url, body=null) {
+    const opts = body ? { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) } : {};
+    const r = await fetch(url, opts);
+    return r.json();
+}
+
+function updateStatus(data) {
+    if (!data.status) return;
+    const s = data.status;
+    document.getElementById('s-state').textContent = s.gcode_state || '--';
+    document.getElementById('s-progress').textContent = s.progress + '%';
+    document.getElementById('progress-fill').style.width = s.progress + '%';
+    document.getElementById('s-nozzle').textContent = s.nozzle_temp + 'C';
+    document.getElementById('s-bed').textContent = s.bed_temp + 'C';
+    document.getElementById('s-task').textContent = s.subtask_name ? 'Arquivo: ' + s.subtask_name : '';
+
+    const mins = s.remaining_time || 0;
+    if (mins > 60) {
+        document.getElementById('s-remaining').textContent = Math.floor(mins/60) + 'h' + (mins%60) + 'm';
+    } else {
+        document.getElementById('s-remaining').textContent = mins + 'min';
+    }
+
+    const box = document.getElementById('state-box');
+    box.className = 'stat state-' + (s.gcode_state || '');
+
+    // Update AMS
+    if (data.ams_trays && data.ams_trays.length) {
+        amsTrays = data.ams_trays;
+        renderAMS();
+    }
+}
+
+function renderAMS() {
+    const container = document.getElementById('ams-slots');
+    container.innerHTML = '';
+    amsTrays.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'ams-slot' + (t.empty ? ' empty' : '') + (t.slot === selectedSlot ? ' selected' : '');
+        div.innerHTML = `<div class="ams-color" style="background:${t.color || '#333'}"></div><div class="ams-id">Slot ${t.slot}</div><div class="ams-type">${t.type || 'Vazio'}</div>`;
+        if (!t.empty) {
+            div.onclick = () => { selectedSlot = t.slot; renderAMS(); };
+        }
+        container.appendChild(div);
+    });
+}
+
+async function refreshStatus() {
+    toast('Atualizando...');
+    const data = await api('/api/status');
+    updateStatus(data);
+    toast('Atualizado!');
+}
+
+async function stopPrint() {
+    await api('/api/stop', {});
+    toast('Print abortado!');
+    setTimeout(refreshStatus, 2000);
+}
+
+async function pausePrint() {
+    await api('/api/pause', {});
+    toast('Print pausado');
+    setTimeout(refreshStatus, 2000);
+}
+
+async function resumePrint() {
+    await api('/api/resume', {});
+    toast('Print retomado');
+    setTimeout(refreshStatus, 2000);
+}
+
+async function printNow() {
+    const filename = document.getElementById('print-file').value;
+    if (!filename) { toast('Selecione um arquivo', false); return; }
+    const useAms = document.getElementById('use-ams').checked;
+    const timelapse = document.getElementById('timelapse').checked;
+    toast('Enviando para impressora...');
+    const r = await api('/api/print', { filename, use_ams: useAms, ams_slot: selectedSlot, timelapse });
+    if (r.ok) { toast('Print iniciado!'); setTimeout(refreshStatus, 3000); }
+    else { toast(r.error, false); }
+}
+
+async function schedulePrint() {
+    const filename = document.getElementById('print-file').value;
+    const scheduleTime = document.getElementById('schedule-time').value;
+    if (!filename) { toast('Selecione um arquivo', false); return; }
+    if (!scheduleTime) { toast('Selecione um horario', false); return; }
+    const useAms = document.getElementById('use-ams').checked;
+    const timelapse = document.getElementById('timelapse').checked;
+    const r = await api('/api/print', { filename, use_ams: useAms, ams_slot: selectedSlot, timelapse, schedule_time: scheduleTime });
+    if (r.ok) { toast('Agendado para ' + r.scheduled); location.reload(); }
+    else { toast(r.error, false); }
+}
+
+async function cancelJob(jobId) {
+    await api('/api/cancel-job', { job_id: jobId });
+    toast('Agendamento cancelado');
+    location.reload();
+}
+
+async function deleteFile(filename) {
+    await api('/api/delete-file', { filename });
+    toast('Removido');
+    location.reload();
+}
+
+async function uploadFile(file) {
+    if (!file) return;
+    const form = new FormData();
+    form.append('file', file);
+    toast('Uploading ' + file.name + '...');
+    const r = await fetch('/api/upload', { method: 'POST', body: form });
+    const data = await r.json();
+    if (data.ok) { toast('Upload OK!'); location.reload(); }
+    else { toast(data.error, false); }
+}
+
+// Drag & drop
+const zone = document.getElementById('upload-zone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); uploadFile(e.dataTransfer.files[0]); });
+
+// Auto-refresh on load
+refreshStatus();
+// Poll every 30s
+setInterval(refreshStatus, 30000);
+</script>
+</body>
+</html>
