@@ -567,14 +567,14 @@ class PrinterViewModel: ObservableObject {
         if !needsSetup {
             refresh()
         }
-        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        timer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { _ in
+            Task { @MainActor [weak self] in
                 guard let self, !self.needsSetup, !self.showingSettings else { return }
                 self.refresh()
             }
         }
-        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { _ in
+            Task { @MainActor [weak self] in
                 guard let self, self.status.gcode_state == "unknown" else { return }
                 self.cubeFilled.toggle()
             }
