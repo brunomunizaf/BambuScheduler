@@ -7,3 +7,8 @@ uploads/
 scheduled_jobs.json
 BambuScheduler.app/
 BambuMenu/.build/
+build/
+dist/
+release/
+*.spec
+.build-venv/

@@ -14,55 +14,19 @@ A macOS menu bar app for scheduling and monitoring prints on Bambu Lab printers 
 ## Requirements
 
 - macOS 14.0+
-- Python 3.9+
 - A Bambu Lab printer on the same network (tested with A1, should work with X1C, P1S, etc.)
 
-## Setup
+## Install
 
-### 1. Clone and install dependencies
+1. Download the latest `BambuScheduler.zip` from the [Releases page](https://github.com/brunomunizaf/BambuScheduler/releases)
+2. Unzip it and drag `BambuScheduler.app` to `/Applications`
+3. Open it. Since the app isn't signed with a paid Apple Developer ID, macOS Gatekeeper will block the first launch:
+   - **Right-click (or Control-click) `BambuScheduler.app` and choose Open**, then click **Open** in the dialog, or
+   - Run `xattr -d com.apple.quarantine /Applications/BambuScheduler.app` in Terminal
 
-```bash
-git clone https://github.com/brunomunizaf/BambuScheduler.git
-cd BambuScheduler
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+No Python install or extra setup needed — the app bundles its own backend.
 
-### 2. Build the menu bar app
-
-```bash
-cd BambuMenu
-swift build -c release
-```
-
-### 3. Create the app bundle
-
-```bash
-mkdir -p BambuScheduler.app/Contents/MacOS
-mkdir -p BambuScheduler.app/Contents/Resources
-cp BambuMenu/.build/release/BambuScheduler BambuScheduler.app/Contents/MacOS/
-```
-
-Copy the provided `Info.plist` into `BambuScheduler.app/Contents/` and optionally generate the icon:
-
-```bash
-python3 generate_icon.py
-cp /tmp/AppIcon.icns BambuScheduler.app/Contents/Resources/
-```
-
-### 4. Install the background service
-
-Edit `com.bambu.scheduler.plist` and update the paths to match your install location, then:
-
-```bash
-cp com.bambu.scheduler.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/com.bambu.scheduler.plist
-```
-
-### 5. Launch
-
-Open `BambuScheduler.app`. On first launch, it will show a setup screen where you enter your printer's:
+On first launch, you'll see a setup screen where you enter your printer's:
 
 - **IP address** — Found in Settings > Network on the printer
 - **Access Code** — Found in Settings > LAN on the printer
@@ -70,6 +34,28 @@ Open `BambuScheduler.app`. On first launch, it will show a setup screen where yo
 - **Name** (optional) — A custom name for your printer
 
 Settings are saved to `~/Library/Application Support/BambuScheduler/config.json`.
+
+## Build from source
+
+Only needed if you want to develop or build the app yourself instead of downloading a release.
+
+```bash
+git clone https://github.com/brunomunizaf/BambuScheduler.git
+cd BambuScheduler
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+./scripts/build_release.sh
+open release/BambuScheduler.app
+```
+
+The script bundles the Python backend with PyInstaller, builds the Swift menu bar app, assembles `release/BambuScheduler.app`, ad-hoc code-signs it, and zips it to `release/BambuScheduler.zip`.
+
+For quick iteration on the backend alone without rebuilding the whole app, you can also run it directly:
+
+```bash
+python3 web.py
+```
 
 ## Usage
 
@@ -106,9 +92,18 @@ Open `http://localhost:8080` in your browser (or click "Open Web UI" in the menu
 
 - **MQTT** (port 8883) — Queries printer status and sends print commands
 - **FTPS** (port 990) — Uploads .3mf files to the printer's internal storage
-- **Flask** (port 8080) — Serves the web UI and API
-- **SwiftUI MenuBarExtra** — Native macOS menu bar widget
+- **Flask** (port 8080) — Serves the web UI and API, bundled into the app with PyInstaller
+- **SwiftUI MenuBarExtra** — Native macOS menu bar widget, launches the bundled backend as a subprocess on startup and stops it on Quit
 - **APScheduler** — Handles timed print scheduling with persistence
+
+### Running the backend as a login service (optional)
+
+If you'd rather run the Flask backend as a persistent background service instead of through the menu bar app (e.g. for headless use), `com.bambu.scheduler.plist` is provided as a launchd template. Edit the paths inside it to match your setup, then:
+
+```bash
+cp com.bambu.scheduler.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.bambu.scheduler.plist
+```
 
 ## License
 

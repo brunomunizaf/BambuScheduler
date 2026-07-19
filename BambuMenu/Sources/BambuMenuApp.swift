@@ -38,7 +38,7 @@ struct BambuSchedulerApp: App {
     @StateObject private var vm = PrinterViewModel()
 
     init() {
-        ServiceManager.loadBackend()
+        ServiceManager.startBackend()
     }
 
     var body: some Scene {
@@ -58,28 +58,36 @@ struct BambuSchedulerApp: App {
 
 // MARK: - Service Manager
 
+/// Runs the bundled Python backend (packaged with PyInstaller) as a child
+/// process for the lifetime of the app, instead of relying on a launchd
+/// service with hardcoded paths. This keeps the packaged .app self-contained
+/// and installable by just dragging it to /Applications.
 enum ServiceManager {
-    private static let plistPath = NSString("~/Library/LaunchAgents/com.bambu.scheduler.plist").expandingTildeInPath
+    private static var backendProcess: Process?
 
-    static func loadBackend() {
-        let status = run("/bin/launchctl", arguments: ["list", "com.bambu.scheduler"])
-        if status != 0 {
-            run("/bin/launchctl", arguments: ["load", plistPath])
+    static func startBackend() {
+        guard backendProcess == nil else { return }
+        guard let backendURL = Bundle.main.url(forResource: "bambuscheduler-backend", withExtension: nil) else {
+            NSLog("BambuScheduler: bundled backend executable not found")
+            return
+        }
+
+        let process = Process()
+        process.executableURL = backendURL
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            backendProcess = process
+        } catch {
+            NSLog("BambuScheduler: failed to start backend: \(error)")
         }
     }
 
-    static func unloadBackend() {
-        run("/bin/launchctl", arguments: ["unload", plistPath])
-    }
-
-    @discardableResult
-    private static func run(_ path: String, arguments: [String]) -> Int32 {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: path)
-        process.arguments = arguments
-        try? process.run()
-        process.waitUntilExit()
-        return process.terminationStatus
+    static func stopBackend() {
+        backendProcess?.terminate()
+        backendProcess = nil
     }
 }
 
@@ -393,7 +401,7 @@ struct PrinterMenuView: View {
                 }
                 Spacer()
                 Button("Quit") {
-                    ServiceManager.unloadBackend()
+                    ServiceManager.stopBackend()
                     NSApplication.shared.terminate(nil)
                 }
             }

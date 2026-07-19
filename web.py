@@ -2,10 +2,12 @@
 """BambuScheduler backend - Upload, schedule, and control prints via MQTT + FTP (LAN only)."""
 
 import os
+import sys
 import ssl
 import json
 import time
 import zipfile
+import logging
 import subprocess
 import threading
 from datetime import datetime
@@ -18,12 +20,30 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-app = Flask(__name__)
+
+def resource_path(relative: str) -> Path:
+    """Resolve a bundled resource (e.g. templates/) whether running from
+    source or from a PyInstaller onefile executable."""
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).parent))
+    return base / relative
+
+
+app = Flask(__name__, template_folder=str(resource_path("templates")))
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100MB max upload
 
-CONFIG_FILE = Path.home() / "Library" / "Application Support" / "BambuScheduler" / "config.json"
+APP_SUPPORT_DIR = Path.home() / "Library" / "Application Support" / "BambuScheduler"
+APP_SUPPORT_DIR.mkdir(parents=True, exist_ok=True)
+
+CONFIG_FILE = APP_SUPPORT_DIR / "config.json"
+LOG_FILE = APP_SUPPORT_DIR / "bambu-scheduler.log"
 MQTT_PORT = 8883
 FTP_PORT = 990
+
+logging.basicConfig(
+    filename=str(LOG_FILE),
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
 
 
 def _load_config():
@@ -50,10 +70,9 @@ ACCESS_CODE = None
 SERIAL = None
 PRINTER_NAME = None
 _load_config()
-PROJECT_DIR = Path(__file__).parent
-UPLOAD_DIR = PROJECT_DIR / "uploads"
+UPLOAD_DIR = APP_SUPPORT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
-JOBS_FILE = PROJECT_DIR / "scheduled_jobs.json"
+JOBS_FILE = APP_SUPPORT_DIR / "scheduled_jobs.json"
 
 scheduler = BackgroundScheduler()
 scheduler.start()
@@ -451,8 +470,7 @@ def api_cancel_job():
 
 @app.route("/api/log-path")
 def api_log_path():
-    log_file = PROJECT_DIR / "bambu-scheduler.log"
-    return jsonify({"path": str(log_file)})
+    return jsonify({"path": str(LOG_FILE)})
 
 
 @app.route("/api/reload-config", methods=["POST"])
@@ -473,7 +491,6 @@ def api_delete_file():
 
 
 if __name__ == "__main__":
-    import logging
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     with app.app_context():
         load_jobs()
