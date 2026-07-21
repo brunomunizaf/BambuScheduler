@@ -236,6 +236,7 @@ struct SetupView: View {
                 }
                 .disabled(ip.isEmpty || accessCode.isEmpty || serial.isEmpty || saving)
                 .buttonStyle(.borderedProminent)
+                .tint(.bambu)
                 .controlSize(.small)
             }
             .padding(.horizontal, 16)
@@ -342,10 +343,10 @@ struct PrinterMenuView: View {
             if !vm.status.error_msg.isEmpty {
                 Text(vm.status.error_msg)
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundColor(.stateFail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(6)
-                    .background(Color.red.opacity(0.1))
+                    .background(Color.stateFail.opacity(0.1))
                     .cornerRadius(6)
                     .padding(.horizontal, 16)
                     .padding(.bottom, 6)
@@ -362,7 +363,7 @@ struct PrinterMenuView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     ProgressView(value: Double(vm.status.progress), total: 100)
-                        .tint(vm.status.gcode_state == "PAUSE" ? .orange : .blue)
+                        .tint(vm.status.gcode_state == "PAUSE" ? .statePause : .bambu)
                     HStack {
                         Text("\(vm.status.progress)%")
                         Spacer()
@@ -383,7 +384,7 @@ struct PrinterMenuView: View {
                         }
                         Spacer()
                         Button("Abort") { vm.stop() }
-                            .foregroundColor(.red)
+                            .foregroundColor(.stateFail)
                     }
                     .font(.caption)
                 }
@@ -411,7 +412,7 @@ struct PrinterMenuView: View {
                     if !todayJobs.isEmpty {
                         Text("Today")
                             .font(.caption2.weight(.semibold))
-                            .foregroundColor(.blue)
+                            .foregroundColor(.bambu)
                             .padding(.top, 2)
                         ForEach(todayJobs) { job in
                             JobRow(job: job, onCancel: { vm.cancelJob(id: job.id) })
@@ -458,12 +459,13 @@ struct StatusBadge: View {
 
     var color: Color {
         switch state {
-        case "IDLE", "FINISH": return .green
-        case "RUNNING": return .blue
-        case "PREPARE": return .yellow
-        case "PAUSE": return .orange
-        case "FAILED": return .red
-        default: return .gray
+        case "FINISH": return .bambu
+        case "IDLE": return .stateIdle
+        case "RUNNING": return .stateRun
+        case "PREPARE": return .statePrepare
+        case "PAUSE": return .statePause
+        case "FAILED": return .stateFail
+        default: return .stateIdle
         }
     }
 
@@ -566,6 +568,19 @@ extension Color {
         let b = Double(val & 0xFF) / 255.0
         self.init(red: r, green: g, blue: b)
     }
+
+    // Bambu-branded palette, matched to the web UI so both surfaces read as
+    // one product.
+    static let bambu = Color(hex: "00C489")!        // primary teal-green
+    static let bambuBright = Color(hex: "3AE3A3")!  // filament highlight
+    static let bambuAmber = Color(hex: "F6B44A")!   // time / scheduling accent
+
+    // Printer state colors
+    static let stateRun = Color(hex: "34E0A1")!
+    static let statePrepare = Color(hex: "F6B44A")!
+    static let statePause = Color(hex: "FF9D42")!
+    static let stateFail = Color(hex: "FF5D5D")!
+    static let stateIdle = Color(hex: "6FA592")!
 }
 
 // MARK: - ViewModel
