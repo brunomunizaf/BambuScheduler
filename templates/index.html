@@ -41,15 +41,24 @@
         body {
             font-family: var(--font-ui);
             background:
-                radial-gradient(1100px 500px at 50% -8%, rgba(0,196,137,.10), transparent 60%),
+                radial-gradient(1400px 560px at 50% -8%, rgba(0,196,137,.10), transparent 60%),
                 var(--ink);
             color: var(--text);
             -webkit-font-smoothing: antialiased;
-            padding: 0 20px 64px;
+            padding: 0 clamp(16px, 3vw, 44px) 64px;
             min-height: 100vh;
         }
 
-        .wrap { max-width: 780px; margin: 0 auto; }
+        .wrap { max-width: 1600px; margin: 0 auto; }
+
+        /* Dashboard grid: full-width status banner, then create | manage. */
+        .dash { display: grid; gap: 16px; }
+        .manage { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+        .dash .card { margin-bottom: 0; }
+        @media (min-width: 1000px) {
+            .dash { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); align-items: start; }
+            .hero { grid-column: 1 / -1; }
+        }
 
         /* ---- Top bar ---- */
         .topbar {
@@ -180,8 +189,18 @@
             padding: 3px 9px; border-radius: 999px;
         }
 
+        /* Hero body: progress/controls on the left, readouts on the right */
+        .hero-row { display: flex; flex-direction: column; gap: 16px; }
+        .hero-left { min-width: 0; }
+
         /* Instrument readouts */
         .readouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+        @media (min-width: 1000px) {
+            .hero-row { flex-direction: row; align-items: center; }
+            .hero-left { flex: 1; }
+            .readouts { flex: none; width: 440px; }
+        }
         .ro {
             background: var(--panel-2); border: 1px solid var(--line-soft);
             border-radius: var(--r-md); padding: 12px 14px;
@@ -429,6 +448,8 @@
         </div>
     </header>
 
+    <main class="dash">
+
     <!-- Status hero -->
     <section class="card hero" id="hero" data-state="">
         <div class="hero-top">
@@ -441,38 +462,42 @@
             </button>
         </div>
 
-        <!-- Active print -->
-        <div id="active-block" class="hidden">
-            <div class="progress">
-                <div class="layerbar">
-                    <div class="layerbar-track"><div class="layerbar-fill" id="progress-fill"></div></div>
-                    <div class="nozzle" id="nozzle"></div>
+        <div class="hero-row">
+            <div class="hero-left">
+                <!-- Active print -->
+                <div id="active-block" class="hidden">
+                    <div class="progress">
+                        <div class="layerbar">
+                            <div class="layerbar-track"><div class="layerbar-fill" id="progress-fill"></div></div>
+                            <div class="nozzle" id="nozzle"></div>
+                        </div>
+                        <div class="progress-meta">
+                            <span class="pct" id="s-progress">0<small>%</small></span>
+                            <span class="eta" id="s-remaining">—</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="progress-meta">
-                    <span class="pct" id="s-progress">0<small>%</small></span>
-                    <span class="eta" id="s-remaining">—</span>
+
+                <!-- Idle / offline -->
+                <div id="idle-block" class="hero-idle">
+                    <span id="idle-text">Waiting for the printer…</span>
                 </div>
+
+                <div class="controls hidden" id="controls">
+                    <button class="btn btn-ghost" id="btn-pause" onclick="pausePrint()">Pause</button>
+                    <button class="btn btn-ghost hidden" id="btn-resume" onclick="resumePrint()">Resume</button>
+                    <button class="btn btn-danger" onclick="confirmStop()">Abort</button>
+                </div>
+            </div>
+
+            <div class="readouts">
+                <div class="ro"><span class="ro-label">Nozzle</span><span class="ro-val" id="s-nozzle">—</span></div>
+                <div class="ro"><span class="ro-label">Bed</span><span class="ro-val" id="s-bed">—</span></div>
+                <div class="ro"><span class="ro-label">Job</span><span class="ro-val ro-task" id="s-task">—</span></div>
             </div>
         </div>
 
-        <!-- Idle / offline -->
-        <div id="idle-block" class="hero-idle">
-            <span id="idle-text">Waiting for the printer…</span>
-        </div>
-
-        <div class="readouts">
-            <div class="ro"><span class="ro-label">Nozzle</span><span class="ro-val" id="s-nozzle">—</span></div>
-            <div class="ro"><span class="ro-label">Bed</span><span class="ro-val" id="s-bed">—</span></div>
-            <div class="ro"><span class="ro-label">Job</span><span class="ro-val ro-task" id="s-task">—</span></div>
-        </div>
-
         <div class="error-banner hidden" id="error-banner"></div>
-
-        <div class="controls hidden" id="controls">
-            <button class="btn btn-ghost" id="btn-pause" onclick="pausePrint()">Pause</button>
-            <button class="btn btn-ghost hidden" id="btn-resume" onclick="resumePrint()">Resume</button>
-            <button class="btn btn-danger" onclick="confirmStop()">Abort</button>
-        </div>
     </section>
 
     <!-- New print -->
@@ -559,6 +584,8 @@
         </div>
     </section>
 
+    <div class="manage">
+
     <!-- Schedule -->
     <section class="card">
         <div class="card-head">
@@ -615,6 +642,10 @@
             <p>Choose a future time and hit Schedule. BambuScheduler uploads the file and starts the print at that moment — the app needs to stay running until then.</p>
         </div>
     </details>
+
+    </div><!-- .manage -->
+
+    </main>
 
 </div>
 
