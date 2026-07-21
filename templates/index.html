@@ -271,9 +271,78 @@
 
         .divider { height: 1px; background: var(--line-soft); margin: 18px 0; }
 
-        .schedule-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
         .actions { display: flex; gap: 10px; margin-top: 16px; }
         .actions .btn { flex: 1; }
+
+        /* ---- Date & time picker ---- */
+        .dtpick { position: relative; margin-top: 7px; }
+        .dt-trigger {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--ink); border: 1px solid var(--line); border-radius: 10px;
+            padding: 11px 12px 11px 13px; cursor: pointer; transition: .16s;
+        }
+        .dt-trigger:hover { border-color: #365349; }
+        .dt-trigger:focus-visible { outline: none; border-color: var(--amber); box-shadow: 0 0 0 3px rgba(246,180,74,.15); }
+        .dt-trigger > svg { width: 16px; height: 16px; color: var(--amber); flex: none; }
+        .dt-label { flex: 1; font-size: .92rem; font-family: var(--font-data); }
+        .dt-label.placeholder { color: var(--text-faint); font-family: var(--font-ui); }
+        .dt-clear {
+            background: none; border: none; color: var(--text-faint); cursor: pointer;
+            font-size: .82rem; line-height: 1; padding: 4px 6px; border-radius: 6px; flex: none;
+        }
+        .dt-clear:hover { color: var(--text); background: var(--panel-2); }
+
+        .cal {
+            position: absolute; top: calc(100% + 8px); left: 0; z-index: 40;
+            width: 320px; max-width: 100%;
+            background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md);
+            padding: 14px; box-shadow: 0 24px 60px -22px rgba(0,0,0,.85);
+        }
+        .cal[hidden] { display: none; }
+        .cal-presets { display: flex; gap: 8px; margin-bottom: 13px; flex-wrap: wrap; }
+        .cal-chip {
+            font-family: var(--font-ui); font-size: .77rem; font-weight: 600; color: var(--amber);
+            background: rgba(246,180,74,.10); border: 1px solid rgba(246,180,74,.28);
+            padding: 6px 11px; border-radius: 999px; cursor: pointer; transition: .16s;
+        }
+        .cal-chip:hover { background: rgba(246,180,74,.20); }
+        .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+        .cal-title { font-weight: 700; font-size: .95rem; letter-spacing: -.01em; }
+        .cal-nav {
+            width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+            background: var(--panel-2); border: 1px solid var(--line); color: var(--text-dim);
+            cursor: pointer; font-size: 1.05rem; transition: .16s;
+        }
+        .cal-nav:hover:not(:disabled) { color: var(--text); border-color: #365349; }
+        .cal-nav:disabled { opacity: .3; cursor: not-allowed; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .cal-wd {
+            text-align: center; font-family: var(--font-data); font-size: .64rem; font-weight: 600;
+            color: var(--text-faint); padding: 2px 0 7px; text-transform: uppercase; letter-spacing: .05em;
+        }
+        .cal-day {
+            height: 36px; display: grid; place-items: center; border-radius: 8px;
+            font-family: var(--font-data); font-size: .82rem; color: var(--text);
+            cursor: pointer; border: 1px solid transparent; transition: background .12s;
+        }
+        .cal-day:hover:not(.disabled):not(.empty) { background: var(--panel-2); }
+        .cal-day.empty { cursor: default; }
+        .cal-day.disabled { color: var(--text-faint); opacity: .32; cursor: not-allowed; }
+        .cal-day.today { border-color: var(--bambu); color: var(--bambu); }
+        .cal-day.sel, .cal-day.sel.today { background: var(--amber); color: #241503; font-weight: 700; border-color: var(--amber); }
+
+        .cal-time { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line-soft); }
+        .cal-time-label { font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
+        .time-ctl { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+        .time-sel { width: auto; font-family: var(--font-data); background: var(--ink); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 7px 8px; font-size: .9rem; }
+        .time-colon { color: var(--text-faint); font-family: var(--font-data); }
+        .ampm { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+        .ampm button { background: var(--ink); border: none; color: var(--text-dim); padding: 7px 11px; font-family: var(--font-ui); font-size: .8rem; font-weight: 600; cursor: pointer; }
+        .ampm button.on { background: var(--amber); color: #241503; }
+
+        .cal-actions { display: flex; gap: 8px; margin-top: 14px; }
+        .cal-actions .btn { flex: 1; }
+        .btn-sm { padding: 8px 12px; font-size: .85rem; }
 
         /* ---- Lists (jobs + files) ---- */
         .row {
@@ -441,10 +510,46 @@
 
         <div class="divider"></div>
 
-        <div class="schedule-row">
-            <div class="field" style="margin-top:0">
-                <label for="schedule-time">Start time <span style="color:var(--text-faint)">— leave empty to print now</span></label>
-                <input type="datetime-local" id="schedule-time">
+        <div class="field" style="margin-top:0">
+            <label>Start time <span style="color:var(--text-faint)">— leave empty to print now</span></label>
+            <div class="dtpick">
+                <div class="dt-trigger" id="dt-trigger" role="button" tabindex="0"
+                     onclick="toggleCal()"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCal();}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    <span class="dt-label placeholder" id="dt-label">Pick a date &amp; time</span>
+                    <button type="button" class="dt-clear" id="dt-clear" hidden aria-label="Clear schedule" onclick="clearSchedule(event)">Clear ✕</button>
+                </div>
+                <input type="hidden" id="schedule-time">
+
+                <div class="cal" id="cal" hidden>
+                    <div class="cal-presets">
+                        <button type="button" class="cal-chip" onclick="preset('tonight')">Tonight, 2:00 AM</button>
+                        <button type="button" class="cal-chip" onclick="preset('tomorrow')">Tomorrow, 8:00 AM</button>
+                    </div>
+                    <div class="cal-head">
+                        <button type="button" class="cal-nav" id="cal-prev" onclick="calNav(-1)" aria-label="Previous month">‹</button>
+                        <div class="cal-title" id="cal-title">—</div>
+                        <button type="button" class="cal-nav" id="cal-next" onclick="calNav(1)" aria-label="Next month">›</button>
+                    </div>
+                    <div class="cal-grid" id="cal-grid"></div>
+                    <div class="cal-time">
+                        <span class="cal-time-label">Time</span>
+                        <div class="time-ctl">
+                            <select class="time-sel" id="cal-hour"></select>
+                            <span class="time-colon">:</span>
+                            <select class="time-sel" id="cal-min"></select>
+                            <div class="ampm">
+                                <button type="button" id="ampm-am" onclick="setAmpm('AM')">AM</button>
+                                <button type="button" id="ampm-pm" onclick="setAmpm('PM')">PM</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="cal-actions">
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="closeCal()">Cancel</button>
+                        <button type="button" class="btn btn-amber btn-sm" onclick="applyCal()">Set time</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -682,9 +787,161 @@ async function schedulePrint() {
         filename, use_ams: $('use-ams').checked, ams_slot: selectedSlot,
         timelapse: $('timelapse').checked, schedule_time: scheduleTime
     });
-    if (r.ok) { toast('Print scheduled'); $('schedule-time').value = ''; fetchJobs(); }
+    if (r.ok) { toast('Print scheduled'); resetSchedule(); fetchJobs(); }
     else toast(r.error || 'Could not schedule', false);
 }
+
+/* ---- Date & time picker ---- */
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WEEKDAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const CAL = { view: new Date(), sel: null, ampm: 'AM' };
+const pad2 = n => String(n).padStart(2, '0');
+const startOfDay = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+
+(function initTimeOptions() {
+    const h = $('cal-hour'), m = $('cal-min');
+    for (let i = 1; i <= 12; i++) h.add(new Option(String(i), String(i)));
+    for (let i = 0; i < 60; i += 5) m.add(new Option(pad2(i), String(i)));
+})();
+
+function toggleCal() { $('cal').hidden ? openCal() : closeCal(); }
+function closeCal() { $('cal').hidden = true; }
+
+function openCal() {
+    if (!CAL.sel) {
+        const now = new Date();
+        CAL.sel = startOfDay(now);
+        CAL.view = new Date(now.getFullYear(), now.getMonth(), 1);
+        let mins = Math.ceil((now.getHours() * 60 + now.getMinutes() + 30) / 5) * 5;
+        setTimeControls(Math.floor(mins / 60) % 24, mins % 60);
+    } else {
+        CAL.view = new Date(CAL.sel.getFullYear(), CAL.sel.getMonth(), 1);
+    }
+    renderCal();
+    $('cal').hidden = false;
+}
+
+function calNav(delta) {
+    CAL.view = new Date(CAL.view.getFullYear(), CAL.view.getMonth() + delta, 1);
+    renderCal();
+}
+
+function renderCal() {
+    $('cal-title').textContent = MONTHS[CAL.view.getMonth()] + ' ' + CAL.view.getFullYear();
+    const today = startOfDay(new Date());
+    // Disable navigating to fully-past months
+    $('cal-prev').disabled = CAL.view.getFullYear() === today.getFullYear() && CAL.view.getMonth() === today.getMonth();
+
+    const grid = $('cal-grid');
+    grid.innerHTML = '';
+    WEEKDAYS.forEach(w => {
+        const el = document.createElement('div');
+        el.className = 'cal-wd'; el.textContent = w;
+        grid.appendChild(el);
+    });
+
+    const startDow = new Date(CAL.view.getFullYear(), CAL.view.getMonth(), 1).getDay();
+    const days = new Date(CAL.view.getFullYear(), CAL.view.getMonth() + 1, 0).getDate();
+    for (let i = 0; i < startDow; i++) {
+        const e = document.createElement('div');
+        e.className = 'cal-day empty';
+        grid.appendChild(e);
+    }
+    for (let d = 1; d <= days; d++) {
+        const cell = new Date(CAL.view.getFullYear(), CAL.view.getMonth(), d);
+        const el = document.createElement('div');
+        el.className = 'cal-day';
+        el.textContent = d;
+        if (cell < today) el.classList.add('disabled');
+        if (+cell === +today) el.classList.add('today');
+        if (CAL.sel && +cell === +startOfDay(CAL.sel)) el.classList.add('sel');
+        if (cell >= today) el.onclick = () => { CAL.sel = cell; renderCal(); };
+        grid.appendChild(el);
+    }
+}
+
+function setAmpm(v) {
+    CAL.ampm = v;
+    $('ampm-am').classList.toggle('on', v === 'AM');
+    $('ampm-pm').classList.toggle('on', v === 'PM');
+}
+
+function setTimeControls(h24, m) {
+    let h12 = h24 % 12; if (h12 === 0) h12 = 12;
+    $('cal-hour').value = String(h12);
+    $('cal-min').value = String(Math.round(m / 5) * 5 % 60);
+    setAmpm(h24 >= 12 ? 'PM' : 'AM');
+}
+
+function readTime() {
+    let h = parseInt($('cal-hour').value, 10) % 12;
+    if (CAL.ampm === 'PM') h += 12;
+    return { h, m: parseInt($('cal-min').value, 10) };
+}
+
+function commit(dt) {
+    $('schedule-time').value = `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}T${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`;
+    updateDtLabel(dt);
+}
+
+function applyCal() {
+    if (!CAL.sel) { toast('Pick a day', false); return; }
+    const { h, m } = readTime();
+    const dt = new Date(CAL.sel.getFullYear(), CAL.sel.getMonth(), CAL.sel.getDate(), h, m, 0);
+    if (dt.getTime() <= Date.now()) { toast('Pick a future time', false); return; }
+    commit(dt);
+    closeCal();
+}
+
+function preset(kind) {
+    const now = new Date();
+    let dt;
+    if (kind === 'tonight') {
+        dt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 2, 0, 0);
+        if (dt <= now) dt.setDate(dt.getDate() + 1);
+    } else {
+        dt = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 8, 0, 0);
+    }
+    CAL.sel = startOfDay(dt);
+    CAL.view = new Date(dt.getFullYear(), dt.getMonth(), 1);
+    setTimeControls(dt.getHours(), dt.getMinutes());
+    commit(dt);
+    closeCal();
+}
+
+function updateDtLabel(dt) {
+    const lbl = $('dt-label'), clr = $('dt-clear');
+    if (!dt) {
+        lbl.textContent = 'Pick a date & time';
+        lbl.classList.add('placeholder');
+        clr.hidden = true;
+        return;
+    }
+    let h12 = dt.getHours() % 12; if (h12 === 0) h12 = 12;
+    const ap = dt.getHours() >= 12 ? 'PM' : 'AM';
+    lbl.textContent = `${MONTHS_ABBR[dt.getMonth()]} ${dt.getDate()}, ${dt.getFullYear()} · ${h12}:${pad2(dt.getMinutes())} ${ap}`;
+    lbl.classList.remove('placeholder');
+    clr.hidden = false;
+}
+
+function resetSchedule() {
+    CAL.sel = null;
+    $('schedule-time').value = '';
+    updateDtLabel(null);
+}
+
+function clearSchedule(ev) {
+    ev.stopPropagation();
+    resetSchedule();
+    closeCal();
+}
+
+/* Close the calendar when clicking outside it */
+document.addEventListener('click', e => {
+    const dp = document.querySelector('.dtpick');
+    if (dp && !dp.contains(e.target)) closeCal();
+});
 
 /* ---- Jobs ---- */
 async function fetchJobs() {
