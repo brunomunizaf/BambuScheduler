@@ -123,16 +123,17 @@ def load_jobs():
         )
         app.logger.info(f"Restored job: {job['name']} @ {run_date}")
 
-# Cached printer state
+# Cached printer state, kept fresh by the background poller thread and read by
+# the API routes. Guarded by _state_lock since the poller and Flask worker
+# threads touch it concurrently.
 printer_state = {
-    "gcode_state": "unknown",
-    "progress": 0,
-    "remaining_time": 0,
-    "nozzle_temp": 0,
-    "bed_temp": 0,
-    "subtask_name": "",
+    "status": None,        # dict with gcode_state/progress/temps/... or None
+    "ams_trays": [],       # list of {slot, type, color, empty}
+    "printer_name": PRINTER_NAME,
     "last_update": None,
 }
+_state_lock = threading.Lock()
+POLL_INTERVAL = 5  # seconds between pushall refreshes
 
 
 # --- MQTT helpers ---
@@ -174,94 +175,135 @@ def mqtt_publish(payload: dict):
     return result["done"]
 
 
-def mqtt_query(timeout=8):
-    """Query printer status and AMS via pushall."""
-    client = _make_mqtt_client()
-    data_out = {"status": None, "ams_trays": [], "printer_name": PRINTER_NAME}
+def _apply_state(updates: dict):
+    """Merge parsed fields into the shared printer_state under the lock."""
+    if not updates:
+        return
+    with _state_lock:
+        printer_state.update(updates)
+        printer_state["last_update"] = datetime.now().isoformat()
 
-    def on_connect(cli, ud, flags, rc, props):
-        if rc == 0:
-            cli.subscribe(f"device/{SERIAL}/report")
-            cmd = {"pushing": {"sequence_id": "0", "command": "pushall"}}
-            cli.publish(f"device/{SERIAL}/request", json.dumps(cmd))
-            # Also request version info which contains the printer name
-            ver_cmd = {"info": {"sequence_id": "1", "command": "get_version"}}
-            cli.publish(f"device/{SERIAL}/request", json.dumps(ver_cmd))
 
-    def on_message(cli, ud, msg):
-        try:
-            data = json.loads(msg.payload)
+def _handle_report(payload: bytes):
+    """Parse an MQTT report from the printer and update the cached state."""
+    try:
+        data = json.loads(payload)
+    except (json.JSONDecodeError, ValueError):
+        return
 
-            # Extract printer model from get_version as fallback
-            if "info" in data and not data_out["printer_name"]:
-                modules = data["info"].get("module", [])
-                for mod in modules:
-                    if mod.get("product_name"):
-                        data_out["printer_name"] = mod["product_name"]
-                        break
+    updates = {}
 
-            if "print" not in data:
-                return
-            p = data["print"]
+    # get_version carries the printer model, used as a name fallback
+    if "info" in data:
+        for mod in data["info"].get("module", []):
+            if mod.get("product_name"):
+                updates["printer_name"] = mod["product_name"]
+                break
 
-            if p.get("machine_name"):
-                data_out["printer_name"] = p["machine_name"]
+    p = data.get("print")
+    if not isinstance(p, dict):
+        _apply_state(updates)
+        return
 
-            if p.get("gcode_state") is not None:
-                error_code = p.get("print_error", 0)
-                hms = p.get("hms", [])
-                error_msg = ""
-                if error_code and error_code != 0:
-                    error_msg = f"Error: 0x{error_code:08X}"
-                elif hms:
-                    # HMS (Health Management System) messages
-                    error_msg = "; ".join(
-                        h.get("msg", h.get("code", "")) for h in hms[:3]
-                    )
-                data_out["status"] = {
-                    "gcode_state": p.get("gcode_state", "unknown"),
-                    "progress": p.get("mc_percent", 0),
-                    "remaining_time": p.get("mc_remaining_time", 0),
-                    "nozzle_temp": round(p.get("nozzle_temper", 0), 1),
-                    "bed_temp": round(p.get("bed_temper", 0), 1),
-                    "subtask_name": p.get("subtask_name", ""),
-                    "error_msg": error_msg,
-                    "print_error": error_code,
+    if p.get("machine_name"):
+        updates["printer_name"] = p["machine_name"]
+
+    if p.get("gcode_state") is not None:
+        error_code = p.get("print_error", 0)
+        hms = p.get("hms", [])
+        error_msg = ""
+        if error_code and error_code != 0:
+            error_msg = f"Error: 0x{error_code:08X}"
+        elif hms:
+            # HMS (Health Management System) messages
+            error_msg = "; ".join(h.get("msg", h.get("code", "")) for h in hms[:3])
+        updates["status"] = {
+            "gcode_state": p.get("gcode_state", "unknown"),
+            "progress": p.get("mc_percent", 0),
+            "remaining_time": p.get("mc_remaining_time", 0),
+            "nozzle_temp": round(p.get("nozzle_temper", 0), 1),
+            "bed_temp": round(p.get("bed_temper", 0), 1),
+            "subtask_name": p.get("subtask_name", ""),
+            "error_msg": error_msg,
+            "print_error": error_code,
+        }
+
+    if "ams" in p:
+        trays_by_slot = {}
+        for unit in p["ams"].get("ams", []):
+            unit_id = int(unit.get("id", 0))
+            for tray in unit.get("tray", []):
+                tray_id = int(tray.get("id", 0))
+                slot = unit_id * 4 + tray_id
+                filament = tray.get("tray_type", "")
+                color = tray.get("tray_color", "")[:6]
+                trays_by_slot[slot] = {
+                    "slot": slot,
+                    "type": filament,
+                    "color": f"#{color}" if color else "",
+                    "empty": not filament,
                 }
-                printer_state.update(data_out["status"])
-                printer_state["last_update"] = datetime.now().isoformat()
+        if trays_by_slot:
+            updates["ams_trays"] = sorted(trays_by_slot.values(), key=lambda t: t["slot"])
 
-            if data_out["ams_trays"]:
-                printer_state["ams_trays"] = data_out["ams_trays"]
+    _apply_state(updates)
 
-            if "ams" in p:
-                ams_units = p["ams"].get("ams", [])
-                trays_by_slot = {}
-                for unit in ams_units:
-                    unit_id = int(unit.get("id", 0))
-                    for tray in unit.get("tray", []):
-                        tray_id = int(tray.get("id", 0))
-                        slot = unit_id * 4 + tray_id
-                        filament = tray.get("tray_type", "")
-                        color = tray.get("tray_color", "")[:6]
-                        trays_by_slot[slot] = {
-                            "slot": slot,
-                            "type": filament,
-                            "color": f"#{color}" if color else "",
-                            "empty": not filament,
-                        }
-                data_out["ams_trays"] = sorted(trays_by_slot.values(), key=lambda t: t["slot"])
-        except (json.JSONDecodeError, KeyError):
-            pass
 
-    client.on_connect = on_connect
-    client.on_message = on_message
-    client.connect(PRINTER_IP, MQTT_PORT, keepalive=60)
-    client.loop_start()
-    time.sleep(timeout)
-    client.loop_stop()
-    client.disconnect()
-    return data_out
+def _status_poller():
+    """Maintain a single persistent MQTT connection to the printer and keep
+    printer_state fresh. Reconnects automatically and picks up config changes.
+    Replaces the old connect-per-request model that blocked each /api/status
+    call for several seconds."""
+    while True:
+        ip, code, serial = PRINTER_IP, ACCESS_CODE, SERIAL
+        if not (ip and code and serial):
+            time.sleep(2)
+            continue
+
+        client = None
+        try:
+            def on_connect(cli, ud, flags, rc, props):
+                if rc == 0:
+                    cli.subscribe(f"device/{serial}/report")
+                    cli.publish(f"device/{serial}/request",
+                                json.dumps({"pushing": {"sequence_id": "0", "command": "pushall"}}))
+                    cli.publish(f"device/{serial}/request",
+                                json.dumps({"info": {"sequence_id": "1", "command": "get_version"}}))
+
+            client = _make_mqtt_client()
+            client.on_connect = on_connect
+            client.on_message = lambda cli, ud, msg: _handle_report(msg.payload)
+            client.connect(ip, MQTT_PORT, keepalive=60)
+            client.loop_start()
+
+            # Refresh periodically until the config changes under us.
+            while (PRINTER_IP, ACCESS_CODE, SERIAL) == (ip, code, serial):
+                time.sleep(POLL_INTERVAL)
+                try:
+                    client.publish(f"device/{serial}/request",
+                                   json.dumps({"pushing": {"sequence_id": "0", "command": "pushall"}}))
+                except Exception:
+                    break
+        except Exception as e:
+            app.logger.warning(f"Status poller reconnecting: {e}")
+            time.sleep(3)
+        finally:
+            if client is not None:
+                try:
+                    client.loop_stop()
+                    client.disconnect()
+                except Exception:
+                    pass
+
+
+def safe_upload_path(filename: str) -> Path | None:
+    """Resolve a client-supplied filename to a path *inside* UPLOAD_DIR,
+    stripping any directory components so it can't traverse out (e.g.
+    "../../etc/passwd" collapses to "passwd"). Returns None if invalid."""
+    name = Path(filename or "").name
+    if not name or name in (".", ".."):
+        return None
+    return UPLOAD_DIR / name
 
 
 def validate_3mf(filepath: Path):
@@ -344,8 +386,13 @@ def index():
 
 @app.route("/api/status")
 def api_status():
-    data = mqtt_query(timeout=5)
-    return jsonify(data)
+    # Served instantly from the poller-maintained cache (no per-request MQTT).
+    with _state_lock:
+        return jsonify({
+            "status": printer_state["status"],
+            "ams_trays": printer_state["ams_trays"],
+            "printer_name": printer_state["printer_name"],
+        })
 
 
 @app.route("/api/upload", methods=["POST"])
@@ -353,10 +400,12 @@ def api_upload():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
     f = request.files["file"]
-    if not f.filename or not f.filename.endswith(".3mf"):
+    if not f.filename or not f.filename.lower().endswith(".3mf"):
         return jsonify({"error": "File must be .3mf"}), 400
 
-    dest = UPLOAD_DIR / f.filename
+    dest = safe_upload_path(f.filename)
+    if dest is None:
+        return jsonify({"error": "Invalid filename"}), 400
     f.save(dest)
 
     try:
@@ -365,18 +414,18 @@ def api_upload():
         dest.unlink()
         return jsonify({"error": str(e)}), 400
 
-    return jsonify({"ok": True, "filename": f.filename})
+    return jsonify({"ok": True, "filename": dest.name})
 
 
 @app.route("/api/print", methods=["POST"])
 def api_print():
-    data = request.json
+    data = request.get_json(silent=True) or {}
     filename = data.get("filename")
     if not filename:
         return jsonify({"error": "filename required"}), 400
 
-    filepath = UPLOAD_DIR / filename
-    if not filepath.exists():
+    filepath = safe_upload_path(filename)
+    if filepath is None or not filepath.exists():
         return jsonify({"error": "File not found"}), 404
 
     use_ams = data.get("use_ams", False)
@@ -434,7 +483,9 @@ def api_resume():
 def api_jobs():
     # Get current AMS tray colors for cross-reference
     tray_colors = {}
-    for tray in printer_state.get("ams_trays", []):
+    with _state_lock:
+        trays = list(printer_state.get("ams_trays", []))
+    for tray in trays:
         tray_colors[tray["slot"]] = tray.get("color", "")
 
     jobs = []
@@ -457,7 +508,7 @@ def api_jobs():
 
 @app.route("/api/cancel-job", methods=["POST"])
 def api_cancel_job():
-    job_id = request.json.get("job_id")
+    job_id = (request.get_json(silent=True) or {}).get("job_id")
     if not job_id:
         return jsonify({"error": "job_id required"}), 400
     try:
@@ -481,11 +532,11 @@ def api_reload_config():
 
 @app.route("/api/delete-file", methods=["POST"])
 def api_delete_file():
-    filename = request.json.get("filename")
+    filename = (request.get_json(silent=True) or {}).get("filename")
     if not filename:
         return jsonify({"error": "filename required"}), 400
-    filepath = UPLOAD_DIR / filename
-    if filepath.exists():
+    filepath = safe_upload_path(filename)
+    if filepath is not None and filepath.exists():
         filepath.unlink()
     return jsonify({"ok": True})
 
@@ -494,4 +545,8 @@ if __name__ == "__main__":
     logging.getLogger("werkzeug").setLevel(logging.ERROR)
     with app.app_context():
         load_jobs()
-    app.run(host="0.0.0.0", port=8080, debug=False)
+    threading.Thread(target=_status_poller, daemon=True).start()
+    # Bind to loopback only: the UI and menu bar app both connect locally, and
+    # the API can start/stop prints and read/write files without auth, so it
+    # must not be reachable from other devices on the LAN.
+    app.run(host="127.0.0.1", port=8080, debug=False)

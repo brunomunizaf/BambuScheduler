@@ -35,6 +35,7 @@ struct PrinterConfig: Codable {
 
 @main
 struct BambuSchedulerApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var vm = PrinterViewModel()
 
     init() {
@@ -56,6 +57,18 @@ struct BambuSchedulerApp: App {
     }
 }
 
+// MARK: - App Delegate
+
+/// Ensures the backend is stopped whenever the app terminates — not just when
+/// the user clicks Quit (also Cmd-Q, logout, and Dock quit go through here).
+/// Without this, a leftover backend keeps holding port 8080 and the next launch
+/// can't bind, leaving the menu bar app silently non-functional.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillTerminate(_ notification: Notification) {
+        ServiceManager.stopBackend()
+    }
+}
+
 // MARK: - Service Manager
 
 /// Runs the bundled Python backend (packaged with PyInstaller) as a child
@@ -65,9 +78,23 @@ struct BambuSchedulerApp: App {
 enum ServiceManager {
     private static var backendProcess: Process?
 
+    /// PyInstaller --onedir layout: the executable lives in its own folder
+    /// alongside an `_internal` directory inside Contents/Resources.
+    private static var backendExecutableURL: URL? {
+        Bundle.main.resourceURL?
+            .appendingPathComponent("bambuscheduler-backend", isDirectory: true)
+            .appendingPathComponent("bambuscheduler-backend")
+    }
+
     static func startBackend() {
         guard backendProcess == nil else { return }
-        guard let backendURL = Bundle.main.url(forResource: "bambuscheduler-backend", withExtension: nil) else {
+
+        // Clean up any backend orphaned by a previous force-quit/crash so it
+        // doesn't keep port 8080 and block the fresh one from binding.
+        terminateStaleBackends()
+
+        guard let backendURL = backendExecutableURL,
+              FileManager.default.isExecutableFile(atPath: backendURL.path) else {
             NSLog("BambuScheduler: bundled backend executable not found")
             return
         }
@@ -88,6 +115,19 @@ enum ServiceManager {
     static func stopBackend() {
         backendProcess?.terminate()
         backendProcess = nil
+    }
+
+    /// Kill any stray backend process by name. Safe to call before spawning our
+    /// own: the backend binary is "bambuscheduler-backend", distinct from this
+    /// app's "BambuScheduler" executable, so this never targets the app itself.
+    private static func terminateStaleBackends() {
+        let pkill = Process()
+        pkill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        pkill.arguments = ["-f", "bambuscheduler-backend"]
+        pkill.standardOutput = FileHandle.nullDevice
+        pkill.standardError = FileHandle.nullDevice
+        try? pkill.run()
+        pkill.waitUntilExit()
     }
 }
 

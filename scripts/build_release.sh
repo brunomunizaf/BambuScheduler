@@ -23,7 +23,10 @@ pip install -q -r requirements.txt pyinstaller pillow
 
 echo "==> Bundling Python backend with PyInstaller"
 rm -rf build dist *.spec
-pyinstaller --onefile --name bambuscheduler-backend \
+# --onedir (not --onefile): the executable and its deps ship unpacked inside
+# the .app, so it starts immediately instead of self-extracting to a temp dir
+# on every launch.
+pyinstaller --onedir --name bambuscheduler-backend \
     --add-data "templates:templates" \
     --collect-submodules paho \
     web.py
@@ -39,13 +42,17 @@ rm -rf "$RELEASE_DIR"
 mkdir -p "$APP_BUNDLE/Contents/MacOS" "$APP_BUNDLE/Contents/Resources"
 
 cp "BambuMenu/.build/release/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/"
-cp dist/bambuscheduler-backend "$APP_BUNDLE/Contents/Resources/"
-chmod +x "$APP_BUNDLE/Contents/Resources/bambuscheduler-backend"
+cp -R dist/bambuscheduler-backend "$APP_BUNDLE/Contents/Resources/"
+chmod +x "$APP_BUNDLE/Contents/Resources/bambuscheduler-backend/bambuscheduler-backend"
 cp packaging/Info.plist "$APP_BUNDLE/Contents/Info.plist"
 cp /tmp/AppIcon.icns "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 
 echo "==> Ad-hoc code signing"
-codesign --deep --force --sign - "$APP_BUNDLE"
+# Sign the nested Mach-O in the bundled backend first, then the app as a whole.
+find "$APP_BUNDLE/Contents/Resources/bambuscheduler-backend" \
+    -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --sign - {} +
+codesign --force --sign - "$APP_BUNDLE/Contents/Resources/bambuscheduler-backend/bambuscheduler-backend"
+codesign --force --deep --sign - "$APP_BUNDLE"
 
 echo "==> Zipping for release"
 (cd "$RELEASE_DIR" && ditto -c -k --keepParent "$APP_NAME.app" "$APP_NAME.zip")
