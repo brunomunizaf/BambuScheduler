@@ -48,6 +48,9 @@ cp packaging/Info.plist "$APP_BUNDLE/Contents/Info.plist"
 cp /tmp/AppIcon.icns "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 
 echo "==> Ad-hoc code signing"
+# Strip extended attributes (resource forks / Finder info) first — codesign
+# rejects them with "resource fork ... not allowed".
+xattr -cr "$APP_BUNDLE"
 # Sign the nested Mach-O in the bundled backend first, then the app as a whole.
 find "$APP_BUNDLE/Contents/Resources/bambuscheduler-backend" \
     -type f \( -name "*.dylib" -o -name "*.so" \) -exec codesign --force --sign - {} +
