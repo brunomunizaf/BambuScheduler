@@ -278,6 +278,9 @@ def _handle_report(payload: bytes):
             "subtask_name": p.get("subtask_name", ""),
             "error_msg": error_msg,
             "print_error": error_code,
+            # Fine-grained current stage (heating, changing filament, calibrating,
+            # …). -1 means no special stage — just normal printing.
+            "stg_cur": p.get("stg_cur", -1),
         }
 
     if "ams" in p:

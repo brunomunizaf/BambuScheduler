@@ -771,6 +771,25 @@ const STATE_LABELS = {
     IDLE: "Idle", FINISH: "Finished", RUNNING: "Printing",
     PREPARE: "Preparing", PAUSE: "Paused", FAILED: "Failed", SLICING: "Slicing"
 };
+
+// Fine-grained printer stage (stg_cur). -1/0 mean normal printing, so they fall
+// back to the coarse gcode_state label; the rest are the sub-states the printer
+// screen shows — heating, changing filament, calibrating, etc.
+const STAGE_LABELS = {
+    1: "Auto bed leveling", 2: "Preheating bed", 3: "Sweeping XY",
+    4: "Changing filament", 5: "Paused (M400)", 6: "Paused — filament runout",
+    7: "Heating nozzle", 8: "Calibrating extrusion", 9: "Scanning bed surface",
+    10: "Inspecting first layer", 11: "Identifying build plate", 12: "Calibrating LiDAR",
+    13: "Homing toolhead", 14: "Cleaning nozzle", 15: "Checking nozzle temp",
+    16: "Paused by user", 17: "Paused — front cover open", 18: "Calibrating LiDAR",
+    19: "Calibrating flow", 20: "Paused — nozzle temp error", 21: "Paused — bed temp error",
+    22: "Unloading filament", 23: "Paused — skip step", 24: "Loading filament",
+    25: "Calibrating motor noise", 26: "Paused — AMS disconnected",
+    27: "Paused — heat-break fan slow", 28: "Paused — chamber temp error",
+    29: "Cooling chamber", 30: "Paused — user G-code", 31: "Motor noise calibration",
+    32: "Paused — nozzle covered", 33: "Paused — cutter error",
+    34: "Paused — first-layer error", 35: "Paused — nozzle clog"
+};
 const $ = id => document.getElementById(id);
 
 function toast(msg, ok = true) {
@@ -821,7 +840,10 @@ function updateStatus(data) {
     const state = s.gcode_state || "IDLE";
     activeState = state;
     hero.dataset.state = state;
-    $('s-state').textContent = STATE_LABELS[state] || state;
+    // While printing/paused, prefer the fine-grained stage (e.g. "Changing
+    // filament") over the coarse "Printing"; fall back when it's just printing.
+    const stageLabel = (state === "RUNNING" || state === "PAUSE") ? STAGE_LABELS[s.stg_cur] : null;
+    $('s-state').textContent = stageLabel || STATE_LABELS[state] || state;
     $('conn-dot').style.background = state === "FAILED" ? "var(--fail)"
         : state === "RUNNING" ? "var(--run)" : "var(--bambu)";
 
