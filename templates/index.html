@@ -194,23 +194,23 @@
         .hero-left { min-width: 0; }
 
         /* Instrument readouts */
-        .readouts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .readouts { display: grid; grid-template-columns: auto auto auto; gap: 10px; }
 
         @media (min-width: 1000px) {
             .hero-row { flex-direction: row; align-items: center; }
             .hero-left { flex: 1; }
-            .readouts { flex: none; width: 440px; }
+            .readouts { flex: none; }
         }
         .ro {
             background: var(--panel-2); border: 1px solid var(--line-soft);
-            border-radius: var(--r-md); padding: 12px 14px;
+            border-radius: var(--r-md); padding: 12px 14px; min-width: 0;
         }
         .ro-label {
             display: block; font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
             color: var(--text-faint); margin-bottom: 6px; font-weight: 700;
         }
         .ro-val { font-family: var(--font-data); font-size: 1.15rem; font-weight: 500; }
-        .ro-task { font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+        .ro-task { font-size: .9rem; display: block; white-space: nowrap; }
 
         .error-banner {
             margin-top: 14px; padding: 11px 14px; border-radius: var(--r-md);
@@ -277,7 +277,7 @@
         .spool.empty { opacity: .38; cursor: not-allowed; }
         .spool-ring {
             width: 30px; height: 30px; border-radius: 50%; margin: 0 auto 8px;
-            border: 4px solid #2a3f37; background: #0d1714;
+            border: 1px solid rgba(255,255,255,.18); background: #2a3f37;
         }
         .spool-id { font-size: .82rem; font-weight: 700; }
         .spool-type { font-size: .7rem; color: var(--text-dim); margin-top: 1px; }
@@ -628,20 +628,20 @@
     </section>
 
     <!-- Guide -->
-    <details class="card guide">
+    <details class="card guide" open>
         <summary>Setup guide</summary>
         <div class="guide-body">
-            <h3>1. Developer Mode (required)</h3>
-            <p>On the printer screen: <code>Settings › General › Developer Mode › ON</code>. Without it, the printer rejects MQTT print commands (error 84033543, "invalid signature").</p>
+            <h3>1. LAN Only Mode</h3>
+            <p>On the printer screen: <code>Settings › LAN Only Mode › ON</code>. Disconnects from the Bambu cloud so the printer accepts local commands only — BambuScheduler can't reach the printer without it.</p>
 
-            <h3>2. LAN Only Mode (optional)</h3>
-            <p>On the printer screen: <code>Settings › General › LAN Only Mode</code>. Disconnects from the Bambu cloud so the printer accepts local commands only.</p>
+            <h3>2. Developer Mode</h3>
+            <p>On the printer screen: <code>Settings › LAN Only Mode › Developer Mode › ON</code>. Without it, the printer rejects MQTT print commands (error 84033543, "invalid signature").</p>
 
             <h3>3. Connection details</h3>
             <p>Enter these in the app's setup screen (the menu bar app), not a file:</p>
             <ul>
-                <li><strong>IP address</strong> — <code>Settings › Network</code> on the printer</li>
-                <li><strong>Access Code</strong> — <code>Settings › LAN</code> (8 digits)</li>
+                <li><strong>IP address</strong> — <code>Settings › LAN Only Mode</code> on the printer</li>
+                <li><strong>Access Code</strong> — <code>Settings › LAN Only Mode</code> (8 digits)</li>
                 <li><strong>Serial Number</strong> — <code>Settings › Device Info</code> or the sticker</li>
             </ul>
 
@@ -785,7 +785,7 @@ function renderAMS() {
     amsTrays.forEach(t => {
         const div = document.createElement('div');
         div.className = 'spool' + (t.empty ? ' empty' : '') + (t.slot === selectedSlot ? ' selected' : '');
-        div.innerHTML = `<div class="spool-ring" style="border-color:${t.color || '#2a3f37'}"></div>
+        div.innerHTML = `<div class="spool-ring" style="background:${t.color || '#2a3f37'}"></div>
             <div class="spool-id">Slot ${t.slot}</div>
             <div class="spool-type">${t.type || 'Empty'}</div>`;
         if (!t.empty) div.onclick = () => { selectedSlot = t.slot; renderAMS(); };

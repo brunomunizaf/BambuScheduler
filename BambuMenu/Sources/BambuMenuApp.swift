@@ -215,7 +215,7 @@ struct SetupView: View {
                     Text("Access Code")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    SecureField("12345678", text: $accessCode)
+                    TextField("12345678", text: $accessCode)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption)
                 }
