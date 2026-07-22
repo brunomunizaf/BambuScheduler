@@ -320,7 +320,7 @@ struct PrinterMenuView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(vm.printerName)
                         .font(.headline)
-                    StatusBadge(state: vm.status.gcode_state)
+                    StatusBadge(state: vm.status.gcode_state, stgCur: vm.status.stg_cur)
                 }
                 Spacer()
                 HStack(spacing: 12) {
@@ -486,6 +486,7 @@ struct PrinterMenuView: View {
 
 struct StatusBadge: View {
     let state: String
+    var stgCur = -1
 
     var color: Color {
         switch state {
@@ -500,6 +501,11 @@ struct StatusBadge: View {
     }
 
     var label: String {
+        // While printing/paused, prefer the fine-grained stage (e.g. "Changing
+        // filament") over the coarse "Printing"; fall back when it's just printing.
+        if state == "RUNNING" || state == "PAUSE", let stage = stageLabels[stgCur] {
+            return stage
+        }
         switch state {
         case "IDLE": return "Idle"
         case "FINISH": return "Finished"
@@ -532,7 +538,28 @@ struct PrinterStatus {
     var bed_temp = 0.0
     var subtask_name = ""
     var error_msg = ""
+    /// Fine-grained current stage (heating, changing filament, calibrating, …).
+    /// -1 means no special stage — just normal printing.
+    var stg_cur = -1
 }
+
+/// Human labels for the printer's current-stage codes (stg_cur). Codes not
+/// listed (-1, 0) mean normal printing and fall back to the coarse state label.
+let stageLabels: [Int: String] = [
+    1: "Auto bed leveling", 2: "Preheating bed", 3: "Sweeping XY",
+    4: "Changing filament", 5: "Paused (M400)", 6: "Paused — filament runout",
+    7: "Heating nozzle", 8: "Calibrating extrusion", 9: "Scanning bed surface",
+    10: "Inspecting first layer", 11: "Identifying build plate", 12: "Calibrating LiDAR",
+    13: "Homing toolhead", 14: "Cleaning nozzle", 15: "Checking nozzle temp",
+    16: "Paused by user", 17: "Paused — front cover open", 18: "Calibrating LiDAR",
+    19: "Calibrating flow", 20: "Paused — nozzle temp error", 21: "Paused — bed temp error",
+    22: "Unloading filament", 23: "Paused — skip step", 24: "Loading filament",
+    25: "Calibrating motor noise", 26: "Paused — AMS disconnected",
+    27: "Paused — heat-break fan slow", 28: "Paused — chamber temp error",
+    29: "Cooling chamber", 30: "Paused — user G-code", 31: "Motor noise calibration",
+    32: "Paused — nozzle covered", 33: "Paused — cutter error",
+    34: "Paused — first-layer error", 35: "Paused — nozzle clog",
+]
 
 struct ScheduledJob: Identifiable {
     let id: String
@@ -726,6 +753,7 @@ class PrinterViewModel: ObservableObject {
         status.bed_temp = s["bed_temp"] as? Double ?? 0
         status.subtask_name = s["subtask_name"] as? String ?? ""
         status.error_msg = s["error_msg"] as? String ?? ""
+        status.stg_cur = s["stg_cur"] as? Int ?? -1
     }
 
     private func fetchJobs() async {
