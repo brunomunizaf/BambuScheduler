@@ -12,6 +12,7 @@ import subprocess
 import threading
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import paho.mqtt.client as mqtt
 from flask import Flask, request, jsonify, render_template, Response
@@ -39,30 +40,65 @@ LOG_FILE = APP_SUPPORT_DIR / "bambu-scheduler.log"
 MQTT_PORT = 8883
 FTP_PORT = 990
 
+_LOG_FORMAT = "%(asctime)s %(levelname)-7s [%(funcName)s] %(message)s"
 logging.basicConfig(
     filename=str(LOG_FILE),
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
+    format=_LOG_FORMAT,
 )
+# Mirror everything to stdout too, so logs are visible both in the log file and
+# when the backend is run directly (python3 web.py).
+_console = logging.StreamHandler(sys.stdout)
+_console.setFormatter(logging.Formatter(_LOG_FORMAT))
+logging.getLogger().addHandler(_console)
+
+log = logging.getLogger("bambu")
+
+
+def _mask(secret) -> str:
+    """Render a secret for logs: show length only, never the value."""
+    if not secret:
+        return "<empty>"
+    return f"<{len(str(secret))} chars>"
 
 
 def _load_config():
     """Load printer config from GUI config file, falling back to .env."""
     global PRINTER_IP, ACCESS_CODE, SERIAL, PRINTER_NAME
     if CONFIG_FILE.exists():
+        log.info(f"Loading config from {CONFIG_FILE}")
         try:
             cfg = json.loads(CONFIG_FILE.read_text())
             PRINTER_IP = cfg.get("printerIP") or os.getenv("PRINTER_IP")
             ACCESS_CODE = cfg.get("accessCode") or os.getenv("PRINTER_ACCESS_CODE")
             SERIAL = cfg.get("serial") or os.getenv("PRINTER_SERIAL")
             PRINTER_NAME = cfg.get("printerName") or os.getenv("PRINTER_NAME")
+            log.info(
+                f"Config loaded: printerIP={PRINTER_IP!r}, serial={SERIAL!r}, "
+                f"accessCode={_mask(ACCESS_CODE)}, printerName={PRINTER_NAME!r}"
+            )
+            _warn_missing_config()
             return
-        except (json.JSONDecodeError, OSError):
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            log.error(f"Failed to read config file {CONFIG_FILE}: {e!r} — falling back to environment variables")
+    else:
+        log.info(f"No config file at {CONFIG_FILE} — falling back to environment variables")
     PRINTER_IP = os.getenv("PRINTER_IP")
     ACCESS_CODE = os.getenv("PRINTER_ACCESS_CODE")
     SERIAL = os.getenv("PRINTER_SERIAL")
     PRINTER_NAME = os.getenv("PRINTER_NAME")
+    log.info(
+        f"Config from env: printerIP={PRINTER_IP!r}, serial={SERIAL!r}, "
+        f"accessCode={_mask(ACCESS_CODE)}, printerName={PRINTER_NAME!r}"
+    )
+    _warn_missing_config()
+
+
+def _warn_missing_config():
+    """Log a clear warning for each required setting that is missing."""
+    for name, value in (("printer IP", PRINTER_IP), ("access code", ACCESS_CODE), ("serial number", SERIAL)):
+        if not value:
+            log.warning(f"Printer {name} is NOT set — the app cannot reach the printer until it is configured in the setup screen")
 
 
 PRINTER_IP = None
@@ -154,16 +190,29 @@ def _make_mqtt_client():
 
 def mqtt_publish(payload: dict):
     """Publish a single MQTT command and disconnect."""
+    command = payload.get("print", {}).get("command", "?")
+    log.info(f"MQTT publish: command={command!r} to {PRINTER_IP}:{MQTT_PORT} (serial={SERIAL!r})")
+    if not (PRINTER_IP and SERIAL and ACCESS_CODE):
+        log.error("MQTT publish aborted: printer IP, serial, or access code is not configured")
+        return False
     client = _make_mqtt_client()
     result = {"done": False}
 
     def on_connect(cli, ud, flags, rc, props):
         if rc == 0:
-            cli.publish(f"device/{SERIAL}/request", json.dumps(payload))
+            topic = f"device/{SERIAL}/request"
+            cli.publish(topic, json.dumps(payload))
+            log.info(f"MQTT connected (rc=0), published command={command!r} to topic {topic}")
             result["done"] = True
+        else:
+            log.error(f"MQTT connect refused: rc={rc} (check access code and that LAN/Developer mode are on)")
 
     client.on_connect = on_connect
-    client.connect(PRINTER_IP, MQTT_PORT, keepalive=60)
+    try:
+        client.connect(PRINTER_IP, MQTT_PORT, keepalive=60)
+    except OSError as e:
+        log.error(f"MQTT connection to {PRINTER_IP}:{MQTT_PORT} failed: {e!r} (is the printer on the same network and reachable?)")
+        return False
     client.loop_start()
 
     deadline = time.time() + 10
@@ -172,6 +221,8 @@ def mqtt_publish(payload: dict):
 
     client.loop_stop()
     client.disconnect()
+    if not result["done"]:
+        log.error(f"MQTT publish timed out after 10s waiting to connect to {PRINTER_IP}:{MQTT_PORT}")
     return result["done"]
 
 
@@ -332,23 +383,50 @@ def read_3mf_thumbnail(filepath: Path) -> bytes | None:
 
 def upload_to_printer(filepath: Path) -> str:
     filename = filepath.name
+    log.info(f"FTP upload starting: file={filename!r}, path={filepath}")
+    if not PRINTER_IP:
+        log.error("FTP upload aborted: printer IP is not configured")
+        raise RuntimeError("Printer is not configured — set the IP in the app's setup screen.")
+    if not filepath.exists():
+        log.error(f"FTP upload aborted: file does not exist on disk: {filepath}")
+        raise RuntimeError(f"File not found on disk: {filepath}")
+
+    size = filepath.stat().st_size
+    # Percent-encode the filename so spaces/special characters produce a valid
+    # URL; curl decodes it back before issuing the FTP STOR command.
+    remote_path = quote(filename)
+    url = f"ftps://{PRINTER_IP}:{FTP_PORT}/{remote_path}"
+    log.info(f"FTP upload: {size} bytes -> {url} (user=bblp, accessCode={_mask(ACCESS_CODE)})")
+
+    started = time.monotonic()
     result = subprocess.run(
         [
             "curl", "--ssl-reqd", "--insecure",
             "--user", f"bblp:{ACCESS_CODE}",
             "-T", str(filepath),
-            f"ftps://{PRINTER_IP}:{FTP_PORT}/{filename}",
+            url,
             "--connect-timeout", "15",
             "--max-time", "300",
         ],
         capture_output=True, text=True,
     )
+    elapsed = time.monotonic() - started
     if result.returncode != 0:
-        raise RuntimeError(f"FTP upload failed: {result.stderr}")
+        stderr = result.stderr.strip()
+        log.error(
+            f"FTP upload FAILED after {elapsed:.1f}s: curl exit {result.returncode}. "
+            f"stderr: {stderr or '<none>'}"
+        )
+        raise RuntimeError(f"FTP upload failed (curl exit {result.returncode}): {stderr}")
+    log.info(f"FTP upload OK: {filename!r} ({size} bytes) in {elapsed:.1f}s")
     return filename
 
 
 def start_print(filename: str, use_ams: bool, ams_slot: int, timelapse: bool):
+    log.info(
+        f"Sending print command: file={filename!r}, use_ams={use_ams}, "
+        f"ams_slot={ams_slot}, timelapse={timelapse}"
+    )
     cmd = {
         "print": {
             "sequence_id": str(int(time.time())),
@@ -372,17 +450,23 @@ def start_print(filename: str, use_ams: bool, ams_slot: int, timelapse: bool):
             "ams_mapping": [ams_slot] if use_ams else "",
         }
     }
-    return mqtt_publish(cmd)
+    ok = mqtt_publish(cmd)
+    if ok:
+        log.info(f"Print command published to printer for {filename!r}")
+    else:
+        log.error(f"Print command FAILED to publish for {filename!r} (MQTT publish returned false)")
+    return ok
 
 
 def run_scheduled_print(filepath: str, use_ams: bool, ams_slot: int, timelapse: bool):
     """Background job for scheduled prints."""
+    log.info(f"Scheduled print firing now: {filepath!r}")
     try:
         fname = upload_to_printer(Path(filepath))
         start_print(fname, use_ams, ams_slot, timelapse)
-        app.logger.info(f"Scheduled print started: {fname}")
+        log.info(f"Scheduled print started successfully: {fname!r}")
     except Exception as e:
-        app.logger.error(f"Scheduled print failed: {e}")
+        log.exception(f"Scheduled print FAILED for {filepath!r}: {e}")
 
 
 # --- Routes ---
@@ -415,23 +499,30 @@ def api_status():
 
 @app.route("/api/upload", methods=["POST"])
 def api_upload():
+    log.info("Upload request received")
     if "file" not in request.files:
+        log.warning("Upload rejected: no 'file' part in request")
         return jsonify({"error": "No file uploaded"}), 400
     f = request.files["file"]
     if not f.filename or not f.filename.lower().endswith(".3mf"):
+        log.warning(f"Upload rejected: filename {f.filename!r} is not a .3mf")
         return jsonify({"error": "File must be .3mf"}), 400
 
     dest = safe_upload_path(f.filename)
     if dest is None:
+        log.warning(f"Upload rejected: filename {f.filename!r} resolved to an invalid path")
         return jsonify({"error": "Invalid filename"}), 400
     f.save(dest)
+    log.info(f"Upload saved: {dest.name!r} ({dest.stat().st_size} bytes) at {dest}")
 
     try:
         validate_3mf(dest)
     except (ValueError, zipfile.BadZipFile) as e:
         dest.unlink()
+        log.warning(f"Upload rejected: {dest.name!r} failed validation: {e} (deleted from disk)")
         return jsonify({"error": str(e)}), 400
 
+    log.info(f"Upload validated OK: {dest.name!r}")
     return jsonify({"ok": True, "filename": dest.name})
 
 
@@ -439,11 +530,14 @@ def api_upload():
 def api_print():
     data = request.get_json(silent=True) or {}
     filename = data.get("filename")
+    log.info(f"Print request received: {data}")
     if not filename:
+        log.warning("Print rejected: no filename in request")
         return jsonify({"error": "filename required"}), 400
 
     filepath = safe_upload_path(filename)
     if filepath is None or not filepath.exists():
+        log.warning(f"Print rejected: file {filename!r} not found (resolved to {filepath})")
         return jsonify({"error": "File not found"}), 404
 
     use_ams = data.get("use_ams", False)
@@ -452,12 +546,15 @@ def api_print():
     schedule_time = data.get("schedule_time")
 
     if schedule_time:
+        log.info(f"Print requested as SCHEDULED for {schedule_time!r}: {filename!r}")
         try:
             run_at = datetime.fromisoformat(schedule_time)
         except ValueError:
+            log.warning(f"Schedule rejected: invalid date format {schedule_time!r}")
             return jsonify({"error": "Invalid date format"}), 400
 
         if run_at <= datetime.now():
+            log.warning(f"Schedule rejected: {run_at} is in the past")
             return jsonify({"error": "Date is in the past"}), 400
 
         job = scheduler.add_job(
@@ -468,14 +565,18 @@ def api_print():
             name=filename,
         )
         save_jobs()
+        log.info(f"Print scheduled: {filename!r} at {run_at} (job_id={job.id})")
         return jsonify({"ok": True, "scheduled": str(run_at), "job_id": job.id})
 
     # Print now
+    log.info(f"Print requested as PRINT NOW: {filename!r}")
     try:
         fname = upload_to_printer(filepath)
         start_print(fname, use_ams, ams_slot, timelapse)
+        log.info(f"Print-now completed for {fname!r}")
         return jsonify({"ok": True, "message": "Print started"})
     except Exception as e:
+        log.exception(f"Print-now FAILED for {filename!r}: {e}")
         return jsonify({"error": str(e)}), 500
 
 

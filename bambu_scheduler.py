@@ -13,6 +13,7 @@ import argparse
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
 import paho.mqtt.client as mqtt
 from apscheduler.schedulers.blocking import BlockingScheduler
@@ -57,7 +58,7 @@ def upload_file(filepath: Path) -> str:
             "curl", "--ssl-reqd", "--insecure",
             "--user", f"bblp:{ACCESS_CODE}",
             "-T", str(filepath),
-            f"ftps://{PRINTER_IP}:{FTP_PORT}/{filename}",
+            f"ftps://{PRINTER_IP}:{FTP_PORT}/{quote(filename)}",
             "--connect-timeout", "15",
             "--max-time", "300",
         ],
