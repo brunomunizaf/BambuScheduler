@@ -1,3 +1,4 @@
+<!-- Keep README.md and README.pt-BR.md in sync when editing either file. -->
 # BambuScheduler
 
 [English](README.md) · **Português (Brasil)**
