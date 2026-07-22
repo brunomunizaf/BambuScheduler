@@ -81,6 +81,8 @@ While you're on that screen, note down these three things — you'll enter them 
 
 Click the **cube icon** in your menu bar and open the setup screen. Type in the **IP address**, **Access Code**, and **Serial Number** from the previous step, then save.
 
+![The printer connection settings screen](docs/images/printer-settings.png)
+
 > The access code can **change** if you toggle LAN Only Mode off and on, or after a firmware update. If the app ever says it can't connect, re‑check this number first — see [Troubleshooting](#troubleshooting).
 
 Your settings are saved on your Mac at `~/Library/Application Support/BambuScheduler/config.json`.
