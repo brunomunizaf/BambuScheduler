@@ -380,6 +380,15 @@
             text-align: center; color: var(--text-faint); font-size: .86rem;
             padding: 18px 8px; border: 1px dashed var(--line-soft); border-radius: var(--r-md);
         }
+        .wake-note {
+            display: flex; gap: 9px; align-items: flex-start;
+            background: rgba(246,180,74,.08); border: 1px solid rgba(246,180,74,.22);
+            border-radius: var(--r-md); padding: 11px 13px; margin-bottom: 12px;
+            font-size: .82rem; color: var(--text-dim); line-height: 1.5;
+        }
+        .wake-note[hidden] { display: none; }
+        .wake-note svg { width: 15px; height: 15px; color: var(--amber); flex: none; margin-top: 1px; }
+        .wake-note b { color: var(--text); font-weight: 650; }
         .link-btn {
             background: none; border: none; color: var(--text-faint); cursor: pointer;
             font-size: .8rem; font-weight: 600; padding: 6px 8px; border-radius: 7px; transition: .16s;
@@ -591,6 +600,10 @@
         <div class="card-head">
             <span class="eyebrow">Schedule</span>
             <h2>Upcoming prints</h2>
+        </div>
+        <div class="wake-note" id="wake-note" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span id="wake-note-text"></span>
         </div>
         <div id="jobs-list">
             <div class="empty">Nothing scheduled yet</div>
@@ -987,9 +1000,28 @@ async function fetchJobs() {
     if (activeState !== "RUNNING" && activeState !== "PAUSE") renderIdle();
 }
 
+function fmtWhen(dt) {
+    let h12 = dt.getHours() % 12; if (h12 === 0) h12 = 12;
+    const ap = dt.getHours() >= 12 ? 'PM' : 'AM';
+    return `${MONTHS_ABBR[dt.getMonth()]} ${dt.getDate()}, ${h12}:${pad2(dt.getMinutes())} ${ap}`;
+}
+
 function renderJobs() {
     const list = $('jobs-list');
-    if (!jobs.length) { list.innerHTML = '<div class="empty">Nothing scheduled yet</div>'; return; }
+    const note = $('wake-note');
+
+    if (!jobs.length) {
+        note.hidden = true;
+        list.innerHTML = '<div class="empty">Nothing scheduled yet</div>';
+        return;
+    }
+
+    // Remind the user the Mac must stay awake until the last print fires.
+    const latest = jobs.reduce((a, b) => (a.ms > b.ms ? a : b));
+    const latestDt = new Date(latest.next_run.replace(' ', 'T'));
+    $('wake-note-text').innerHTML =
+        `Keep this Mac <b>awake and plugged in</b> until <b>${fmtWhen(latestDt)}</b> — lid open. The screen can turn off.`;
+    note.hidden = false;
     list.innerHTML = '';
     jobs.sort((a, b) => a.ms - b.ms).forEach(j => {
         const when = j.ms > 0 ? "in " + fmtDuration(j.ms / 60000) : "due now";
