@@ -20,9 +20,22 @@ A macOS menu bar app for scheduling and monitoring prints on Bambu Lab printers 
 
 1. Download the latest `BambuScheduler.zip` from the [Releases page](https://github.com/brunomunizaf/BambuScheduler/releases)
 2. Unzip it and drag `BambuScheduler.app` to `/Applications`
-3. Open it. Since the app isn't signed with a paid Apple Developer ID, macOS Gatekeeper will block the first launch:
-   - **Right-click (or Control-click) `BambuScheduler.app` and choose Open**, then click **Open** in the dialog, or
-   - Run `xattr -d com.apple.quarantine /Applications/BambuScheduler.app` in Terminal
+3. Open it.
+
+### First launch: getting past Gatekeeper
+
+BambuScheduler isn't signed with a paid Apple Developer ID, so on first launch macOS blocks it with a message like **"Apple could not verify BambuScheduler is free of malware."** This is expected for any app distributed outside the App Store — here's how to allow it:
+
+1. When the **"BambuScheduler Not Opened"** dialog appears, click **Done** (⚠️ *not* "Move to Trash").
+2. Open **System Settings › Privacy & Security** and scroll down to the **Security** section.
+3. You'll see *"BambuScheduler was blocked to protect your Mac."* — click **Open Anyway**.
+4. Confirm with **Open Anyway** again and authenticate with Touch ID or your password.
+
+You only need to do this once. After that it opens normally.
+
+> On older macOS you could instead right-click the app and choose **Open**, but on macOS Sequoia (15) and later that option is gone — use the Privacy & Security steps above.
+>
+> Prefer the terminal? Run `xattr -d com.apple.quarantine /Applications/BambuScheduler.app` and then open the app normally.
 
 No Python install or extra setup needed — the app bundles its own backend.
 
