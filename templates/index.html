@@ -379,10 +379,46 @@
         }
         .row:last-child { margin-bottom: 0; }
         .row-main { flex: 1; min-width: 0; }
+        .row-preview { cursor: pointer; }
+        .row-preview:hover .row-name { color: var(--bambu-bright); }
         .row-name { font-size: .9rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .row-sub { font-family: var(--font-data); font-size: .76rem; color: var(--text-faint); margin-top: 2px; }
         .row-sub .when { color: var(--amber); }
+
+        /* Model preview modal */
+        .modal-backdrop {
+            position: fixed; inset: 0; z-index: 200;
+            display: flex; align-items: center; justify-content: center; padding: 24px;
+            background: rgba(0,0,0,.62); backdrop-filter: blur(3px);
+        }
+        .modal-backdrop[hidden] { display: none; }
+        .modal {
+            background: var(--panel); border: 1px solid var(--line);
+            border-radius: var(--r-lg, 16px); width: min(640px, 100%);
+            max-height: 88vh; display: flex; flex-direction: column;
+            box-shadow: 0 24px 60px rgba(0,0,0,.5); overflow: hidden;
+        }
+        .modal-head {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 14px 16px; border-bottom: 1px solid var(--line-soft);
+        }
+        .modal-title {
+            font-size: .95rem; font-weight: 650; min-width: 0;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .modal-body {
+            display: flex; align-items: center; justify-content: center;
+            padding: 18px; min-height: 260px;
+            background: #ffffff;
+        }
+        #preview-img { max-width: 100%; max-height: 66vh; object-fit: contain; border-radius: 8px; display: block; }
+        #preview-img[hidden] { display: none; }
+        .modal-msg { color: var(--text-dim); font-size: .88rem; }
+        .modal-msg[hidden] { display: none; }
         .swatch { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(255,255,255,.2); flex: none; }
+
+        .dropzone.has-file { border-style: solid; border-color: var(--bambu); background: rgba(0,196,137,.06); }
+        .dropzone.has-file svg { color: var(--bambu-bright); }
         .empty {
             text-align: center; color: var(--text-faint); font-size: .86rem;
             padding: 18px 8px; border: 1px dashed var(--line-soft); border-radius: var(--r-md);
@@ -526,15 +562,8 @@
         <div class="dropzone" id="upload-zone" onclick="document.getElementById('file-input').click()">
             <input type="file" id="file-input" accept=".3mf" onchange="uploadFile(this.files[0])">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0l-4 4m4-4l4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
-            <div><strong>Drop a .3mf file</strong> or click to browse</div>
+            <div id="dz-text"><strong>Drop a .3mf file</strong> or click to browse</div>
             <div class="hint">Must be sliced in Bambu Studio</div>
-        </div>
-
-        <div class="field">
-            <label for="print-file">File</label>
-            <select id="print-file">
-                {% for f in files %}<option value="{{ f }}">{{ f }}</option>{% endfor %}
-            </select>
         </div>
 
         <div class="field">
@@ -617,23 +646,6 @@
         </div>
     </section>
 
-    <!-- Files -->
-    <section class="card">
-        <div class="card-head">
-            <span class="eyebrow">Library</span>
-            <h2>Files</h2>
-        </div>
-        <div id="file-list">
-            {% for f in files %}
-            <div class="row" data-file="{{ f }}">
-                <div class="row-main"><div class="row-name">{{ f }}</div></div>
-                <button class="link-btn" onclick="deleteFile('{{ f }}')">Remove</button>
-            </div>
-            {% endfor %}
-            {% if not files %}<div class="empty">No files uploaded</div>{% endif %}
-        </div>
-    </section>
-
     <!-- Guide -->
     <details class="card guide" open>
         <summary>Setup guide</summary>
@@ -676,11 +688,28 @@
 
 <div class="toast-wrap" id="toast-wrap"></div>
 
+<!-- Model preview modal -->
+<div class="modal-backdrop" id="preview-modal" hidden>
+    <div class="modal">
+        <div class="modal-head">
+            <span class="modal-title" id="preview-title">Preview</span>
+            <button class="icon-btn" id="preview-close" title="Close" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <img id="preview-img" alt="Model preview" hidden>
+            <div class="modal-msg" id="preview-msg">Loading preview…</div>
+        </div>
+    </div>
+</div>
+
 <script>
 let selectedSlot = 0;
 let amsTrays = [];
 let jobs = [];
 let activeState = "";
+let currentFile = null;
 
 const STATE_LABELS = {
     IDLE: "Idle", FINISH: "Finished", RUNNING: "Printing",
@@ -824,8 +853,8 @@ async function resumePrint() { await api('/api/resume', {}); toast('Print resume
 
 /* ---- Print / schedule ---- */
 async function printNow() {
-    const filename = $('print-file').value;
-    if (!filename) { toast('Pick a file first', false); return; }
+    const filename = currentFile;
+    if (!filename) { toast('Upload a file first', false); return; }
     toast('Sending to printer…');
     const r = await api('/api/print', {
         filename, use_ams: $('use-ams').checked,
@@ -836,9 +865,9 @@ async function printNow() {
 }
 
 async function schedulePrint() {
-    const filename = $('print-file').value;
+    const filename = currentFile;
     const scheduleTime = $('schedule-time').value;
-    if (!filename) { toast('Pick a file first', false); return; }
+    if (!filename) { toast('Upload a file first', false); return; }
     if (!scheduleTime) { toast('Pick a start time', false); return; }
     const r = await api('/api/print', {
         filename, use_ams: $('use-ams').checked, ams_slot: selectedSlot,
@@ -1042,12 +1071,13 @@ function renderJobs() {
         const row = document.createElement('div');
         row.className = 'row';
         row.innerHTML = `${dot}
-            <div class="row-main">
+            <div class="row-main row-preview" title="Preview model">
                 <div class="row-name">${escapeHtml(j.name)}</div>
                 <div class="row-sub"><span class="when">${when}</span> · ${j.next_run}</div>
             </div>
             <button class="link-btn">Cancel</button>`;
-        row.querySelector('button').onclick = () => cancelJob(j.id);
+        row.querySelector('.row-preview').onclick = () => openPreview(j.name);
+        row.querySelector('.link-btn').onclick = () => cancelJob(j.id);
         list.appendChild(row);
     });
 }
@@ -1057,6 +1087,25 @@ async function cancelJob(id) {
     toast('Schedule canceled');
     fetchJobs();
 }
+
+/* ---- Model preview modal ---- */
+function openPreview(name) {
+    const modal = $('preview-modal'), img = $('preview-img'), msg = $('preview-msg');
+    $('preview-title').textContent = name;
+    img.hidden = true;
+    msg.hidden = false; msg.textContent = 'Loading preview…';
+    img.onload = () => { img.hidden = false; msg.hidden = true; };
+    img.onerror = () => { img.hidden = true; msg.hidden = false; msg.textContent = 'No preview available for this file.'; };
+    img.src = '/api/thumbnail?file=' + encodeURIComponent(name);
+    modal.hidden = false;
+}
+function closePreview() {
+    $('preview-modal').hidden = true;
+    $('preview-img').src = '';
+}
+$('preview-close').onclick = closePreview;
+$('preview-modal').addEventListener('click', e => { if (e.target === $('preview-modal')) closePreview(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('preview-modal').hidden) closePreview(); });
 
 /* ---- Files ---- */
 async function uploadFile(file) {
@@ -1071,42 +1120,21 @@ async function uploadFile(file) {
     $('file-input').value = '';
 }
 
-function addFile(name) {
-    const sel = $('print-file');
-    if (![...sel.options].some(o => o.value === name)) {
-        const opt = new Option(name, name); sel.add(opt, 0); sel.value = name;
-    }
-    const list = $('file-list');
-    const empty = list.querySelector('.empty'); if (empty) empty.remove();
-    if (!list.querySelector(`[data-file="${CSS.escape(name)}"]`)) {
-        const row = document.createElement('div');
-        row.className = 'row'; row.dataset.file = name;
-        row.innerHTML = `<div class="row-main"><div class="row-name">${escapeHtml(name)}</div></div>
-            <button class="link-btn">Remove</button>`;
-        row.querySelector('button').onclick = () => deleteFile(name);
-        list.prepend(row);
-    }
+function setCurrentFile(name) {
+    currentFile = name || null;
+    $('dz-text').innerHTML = currentFile
+        ? `<strong>${escapeHtml(currentFile)}</strong> — ready to print`
+        : '<strong>Drop a .3mf file</strong> or click to browse';
+    $('upload-zone').classList.toggle('has-file', !!currentFile);
 }
 
-async function deleteFile(name) {
-    await api('/api/delete-file', { filename: name });
-    toast('File removed');
-    document.querySelector(`#file-list [data-file="${CSS.escape(name)}"]`)?.remove();
-    const sel = $('print-file');
-    [...sel.options].forEach(o => { if (o.value === name) o.remove(); });
-    if (!$('file-list').children.length) $('file-list').innerHTML = '<div class="empty">No files uploaded</div>';
+function addFile(name) {
+    setCurrentFile(name);
 }
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
-
-/* Wire the initial server-rendered file list */
-document.querySelectorAll('#file-list .row').forEach(row => {
-    const name = row.dataset.file;
-    const btn = row.querySelector('button');
-    if (btn) btn.onclick = () => deleteFile(name);
-});
 
 /* Drag & drop */
 const zone = $('upload-zone');

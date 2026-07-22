@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 import paho.mqtt.client as mqtt
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, Response
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
@@ -312,6 +312,24 @@ def validate_3mf(filepath: Path):
             raise ValueError("File not sliced (no gcode). Slice it in Bambu Studio first.")
 
 
+def read_3mf_thumbnail(filepath: Path) -> bytes | None:
+    """Return the embedded plate render PNG from a sliced .3mf, trying the
+    higher-quality plates first and falling back to the small thumbnails."""
+    candidates = [
+        "Metadata/plate_1.png",
+        "Metadata/plate_no_light_1.png",
+        "Auxiliaries/.thumbnails/thumbnail_middle.png",
+        "Auxiliaries/.thumbnails/thumbnail_3mf.png",
+        "Metadata/plate_1_small.png",
+    ]
+    with zipfile.ZipFile(filepath) as z:
+        names = set(z.namelist())
+        for name in candidates:
+            if name in names:
+                return z.read(name)
+    return None
+
+
 def upload_to_printer(filepath: Path) -> str:
     filename = filepath.name
     result = subprocess.run(
@@ -504,6 +522,22 @@ def api_jobs():
                 entry["ams_color"] = tray_colors.get(ams_slot, "")
         jobs.append(entry)
     return jsonify(jobs)
+
+
+@app.route("/api/thumbnail")
+def api_thumbnail():
+    """Serve the embedded plate render of an uploaded .3mf for the preview modal."""
+    filepath = safe_upload_path(request.args.get("file", ""))
+    if filepath is None or not filepath.exists():
+        return jsonify({"error": "File not found"}), 404
+    try:
+        png = read_3mf_thumbnail(filepath)
+    except zipfile.BadZipFile:
+        return jsonify({"error": "Invalid .3mf file"}), 422
+    if png is None:
+        return jsonify({"error": "No preview image in this file"}), 404
+    return Response(png, mimetype="image/png",
+                    headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.route("/api/cancel-job", methods=["POST"])
