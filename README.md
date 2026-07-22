@@ -1,5 +1,7 @@
 # BambuScheduler
 
+**English** · [Português (Brasil)](README.pt-BR.md)
+
 A tiny macOS menu bar app that schedules and monitors prints on your Bambu Lab printer over your local network. **No cloud account, no subscription** — it talks straight to your printer at home.
 
 > Want to start a print at 2 AM to catch off-peak power, or line up tomorrow's jobs tonight? Drop in a file, pick a time, done.
