@@ -454,6 +454,41 @@
         .guide-body code { font-family: var(--font-data); font-size: .82em; background: var(--panel-2); padding: 1px 6px; border-radius: 5px; color: var(--text); }
         .guide-body ul { margin: 4px 0 0 18px; }
 
+        /* ---- Live logs ---- */
+        details.logs { padding: 0; }
+        details.logs summary {
+            list-style: none; cursor: pointer; padding: 18px 20px;
+            display: flex; align-items: center; gap: 10px;
+            font-weight: 700; font-size: .95rem;
+        }
+        details.logs summary::-webkit-details-marker { display: none; }
+        details.logs summary::after { content: "＋"; color: var(--text-faint); font-weight: 400; margin-left: auto; }
+        details.logs[open] summary::after { content: "－"; }
+        .logs-summary-label { display: flex; align-items: center; gap: 8px; }
+        .logs-summary-label::before {
+            content: ""; width: 7px; height: 7px; border-radius: 50%;
+            background: var(--bambu); box-shadow: 0 0 0 0 rgba(0,196,137,.5);
+            animation: logpulse 2s ease-out infinite;
+        }
+        @keyframes logpulse { 0% { box-shadow: 0 0 0 0 rgba(0,196,137,.5); } 70% { box-shadow: 0 0 0 6px rgba(0,196,137,0); } 100% { box-shadow: 0 0 0 0 rgba(0,196,137,0); } }
+        .logs-summary-meta { font-family: var(--font-data); font-size: .72rem; color: var(--text-faint); font-weight: 500; }
+        .logs-body { padding: 0 20px 20px; }
+        .logs-toolbar { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+        .logs-toolbar-spacer { flex: 1; }
+        .logs-toggle { font-size: .82rem; }
+        .log-view {
+            font-family: var(--font-data); font-size: .76rem; line-height: 1.5;
+            background: var(--ink); border: 1px solid var(--line-soft); border-radius: var(--r-md);
+            padding: 12px 14px; height: 320px; overflow-y: auto; overflow-x: auto;
+            color: var(--text-dim); white-space: pre;
+        }
+        .log-view .log-empty { color: var(--text-faint); font-style: italic; }
+        .log-line { display: block; }
+        .log-line.lvl-error { color: var(--fail); }
+        .log-line.lvl-warning { color: var(--amber); }
+        .log-line.lvl-info { color: var(--text-dim); }
+        .log-line .log-lvl { font-weight: 700; }
+
         /* ---- Toast ---- */
         .toast-wrap { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 100; align-items: center; }
         .toast {
@@ -645,6 +680,23 @@
             <div class="empty">Nothing scheduled yet</div>
         </div>
     </section>
+
+    <!-- Live logs -->
+    <details class="card logs" id="logs-card">
+        <summary>
+            <span class="logs-summary-label">Live logs</span>
+            <span class="logs-summary-meta" id="logs-meta"></span>
+        </summary>
+        <div class="logs-body">
+            <div class="logs-toolbar">
+                <label class="toggle logs-toggle"><input type="checkbox" id="logs-autoscroll" checked> Auto-scroll</label>
+                <label class="toggle logs-toggle"><input type="checkbox" id="logs-pause"> Pause</label>
+                <div class="logs-toolbar-spacer"></div>
+                <button type="button" class="btn btn-ghost btn-sm" id="logs-copy" onclick="copyLogs()">Copy</button>
+            </div>
+            <div class="log-view" id="log-view"><div class="log-empty">Waiting for logs…</div></div>
+        </div>
+    </details>
 
     <!-- Guide -->
     <details class="card guide" open>
@@ -1136,6 +1188,53 @@ function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+/* ---- Live logs ---- */
+let lastLogText = "";
+
+function logLevelClass(line) {
+    if (/\bERROR\b/.test(line)) return 'lvl-error';
+    if (/\bWARNING\b/.test(line)) return 'lvl-warning';
+    if (/\bINFO\b/.test(line)) return 'lvl-info';
+    return '';
+}
+
+async function fetchLogs() {
+    if ($('logs-pause').checked) return;
+    if (!$('logs-card').open) return;  // don't poll while collapsed
+    let data;
+    try {
+        data = await api('/api/logs?lines=400');
+    } catch (e) { return; }
+    const lines = data.lines || [];
+    const joined = lines.join('\n');
+    if (joined === lastLogText) return;  // nothing new, don't re-render
+    lastLogText = joined;
+
+    const view = $('log-view');
+    const nearBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 40;
+
+    if (!lines.length) {
+        view.innerHTML = '<div class="log-empty">No log entries yet</div>';
+    } else {
+        view.innerHTML = lines
+            .map(l => `<span class="log-line ${logLevelClass(l)}">${escapeHtml(l)}</span>`)
+            .join('\n');
+    }
+    $('logs-meta').textContent = lines.length ? `${lines.length} lines` : '';
+
+    if ($('logs-autoscroll').checked && nearBottom) view.scrollTop = view.scrollHeight;
+}
+
+function copyLogs() {
+    navigator.clipboard.writeText(lastLogText).then(
+        () => toast('Logs copied'),
+        () => toast('Copy failed', false)
+    );
+}
+
+// Fetch immediately when the panel is expanded so it's not empty.
+$('logs-card').addEventListener('toggle', () => { if ($('logs-card').open) fetchLogs(); });
+
 /* Drag & drop */
 const zone = $('upload-zone');
 zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('over'); });
@@ -1147,6 +1246,7 @@ refreshStatus();
 fetchJobs();
 setInterval(refreshStatus, 3000);
 setInterval(fetchJobs, 15000);
+setInterval(fetchLogs, 2000);
 setInterval(() => { renderJobs(); if (activeState !== "RUNNING" && activeState !== "PAUSE") renderIdle(); }, 1000);
 </script>
 </body>

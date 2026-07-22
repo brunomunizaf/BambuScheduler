@@ -10,6 +10,7 @@ import zipfile
 import logging
 import subprocess
 import threading
+from collections import deque
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote
@@ -495,6 +496,24 @@ def api_status():
             "ams_trays": printer_state["ams_trays"],
             "printer_name": printer_state["printer_name"],
         })
+
+
+@app.route("/api/logs")
+def api_logs():
+    """Return the tail of the log file for the live-logs panel in the web UI.
+
+    ?lines=N  (default 200, max 2000) — how many trailing lines to return.
+    """
+    try:
+        lines = min(max(int(request.args.get("lines", 200)), 1), 2000)
+    except (TypeError, ValueError):
+        lines = 200
+    try:
+        with open(LOG_FILE, "r", errors="replace") as fh:
+            tail = deque(fh, maxlen=lines)
+    except FileNotFoundError:
+        return jsonify({"lines": [], "path": str(LOG_FILE)})
+    return jsonify({"lines": [ln.rstrip("\n") for ln in tail], "path": str(LOG_FILE)})
 
 
 @app.route("/api/upload", methods=["POST"])
