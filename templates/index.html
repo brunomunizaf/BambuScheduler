@@ -516,7 +516,7 @@
         }
     </style>
 </head>
-<body>
+<body data-lang="{{ lang }}">
 <div class="wrap">
 
     <!-- Top bar -->
@@ -531,7 +531,7 @@
         </div>
         <div class="conn">
             <span class="dot" id="conn-dot"></span>
-            <span class="conn-name" id="conn-name">Connecting…</span>
+            <span class="conn-name" id="conn-name" data-i18n="connecting">Connecting…</span>
         </div>
     </header>
 
@@ -541,10 +541,10 @@
     <section class="card hero" id="hero" data-state="">
         <div class="hero-top">
             <div>
-                <span class="eyebrow">Printer</span>
+                <span class="eyebrow" data-i18n="printer">Printer</span>
                 <div class="state"><span class="dot"></span><span id="s-state">—</span></div>
             </div>
-            <button class="icon-btn" id="refresh-btn" onclick="refreshStatus(true)" title="Refresh">
+            <button class="icon-btn" id="refresh-btn" onclick="refreshStatus(true)" title="Refresh" data-i18n-title="refresh">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
             </button>
         </div>
@@ -567,21 +567,21 @@
                     <span class="eta" id="s-remaining">—</span>
                 </div>
                 <div id="idle-block" class="hero-idle">
-                    <span id="idle-text">Waiting for the printer…</span>
+                    <span id="idle-text" data-i18n="waiting_printer">Waiting for the printer…</span>
                 </div>
             </div>
 
             <div class="readouts">
-                <div class="ro"><span class="ro-label">Nozzle</span><span class="ro-val" id="s-nozzle">—</span></div>
-                <div class="ro"><span class="ro-label">Bed</span><span class="ro-val" id="s-bed">—</span></div>
-                <div class="ro"><span class="ro-label">Job</span><span class="ro-val ro-task" id="s-task">—</span></div>
+                <div class="ro"><span class="ro-label" data-i18n="nozzle">Nozzle</span><span class="ro-val" id="s-nozzle">—</span></div>
+                <div class="ro"><span class="ro-label" data-i18n="bed">Bed</span><span class="ro-val" id="s-bed">—</span></div>
+                <div class="ro"><span class="ro-label" data-i18n="job">Job</span><span class="ro-val ro-task" id="s-task">—</span></div>
             </div>
         </div>
 
         <div class="controls hidden" id="controls">
-            <button class="btn btn-ghost" id="btn-pause" onclick="pausePrint()">Pause</button>
-            <button class="btn btn-ghost hidden" id="btn-resume" onclick="resumePrint()">Resume</button>
-            <button class="btn btn-danger" onclick="confirmStop()">Abort</button>
+            <button class="btn btn-ghost" id="btn-pause" onclick="pausePrint()" data-i18n="pause">Pause</button>
+            <button class="btn btn-ghost hidden" id="btn-resume" onclick="resumePrint()" data-i18n="resume">Resume</button>
+            <button class="btn btn-danger" onclick="confirmStop()" data-i18n="abort">Abort</button>
         </div>
 
         <div class="error-banner hidden" id="error-banner"></div>
@@ -592,47 +592,47 @@
     <!-- New print -->
     <section class="card">
         <div class="card-head">
-            <span class="eyebrow">New print</span>
-            <h2>Send a file</h2>
+            <span class="eyebrow" data-i18n="new_print">New print</span>
+            <h2 data-i18n="send_a_file">Send a file</h2>
         </div>
 
         <div class="dropzone" id="upload-zone" onclick="document.getElementById('file-input').click()">
             <input type="file" id="file-input" accept=".3mf" onchange="uploadFile(this.files[0])">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3m0 0l-4 4m4-4l4 4"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
-            <div id="dz-text"><strong>Drop a .3mf file</strong> or click to browse</div>
-            <div class="hint">Must be sliced in Bambu Studio</div>
+            <div id="dz-text" data-i18n-html="dz_text"><strong>Drop a .3mf file</strong> or click to browse</div>
+            <div class="hint" data-i18n="must_slice">Must be sliced in Bambu Studio</div>
         </div>
 
         <div class="field">
-            <label>AMS slot</label>
+            <label data-i18n="ams_slot">AMS slot</label>
             <div class="ams" id="ams-slots">
-                <div class="ams-empty-note">Refresh the status to load AMS filaments</div>
+                <div class="ams-empty-note" data-i18n="ams_empty">Refresh the status to load AMS filaments</div>
             </div>
         </div>
 
         <div class="toggles">
-            <label class="toggle"><input type="checkbox" id="use-ams" checked> Use AMS</label>
-            <label class="toggle"><input type="checkbox" id="timelapse"> Timelapse</label>
+            <label class="toggle"><input type="checkbox" id="use-ams" checked> <span data-i18n="use_ams">Use AMS</span></label>
+            <label class="toggle"><input type="checkbox" id="timelapse"> <span data-i18n="timelapse">Timelapse</span></label>
         </div>
 
         <div class="divider"></div>
 
         <div class="field" style="margin-top:0">
-            <label>Start time <span style="color:var(--text-faint)">— leave empty to print now</span></label>
+            <label><span data-i18n="start_time_main">Start time</span> <span style="color:var(--text-faint)" data-i18n="start_time_hint">— leave empty to print now</span></label>
             <div class="dtpick">
                 <div class="dt-trigger" id="dt-trigger" role="button" tabindex="0"
                      onclick="toggleCal()"
                      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleCal();}">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                    <span class="dt-label placeholder" id="dt-label">Pick a date &amp; time</span>
-                    <button type="button" class="dt-clear" id="dt-clear" hidden aria-label="Clear schedule" onclick="clearSchedule(event)">Clear ✕</button>
+                    <span class="dt-label placeholder" id="dt-label" data-i18n="pick_datetime">Pick a date &amp; time</span>
+                    <button type="button" class="dt-clear" id="dt-clear" hidden aria-label="Clear schedule" onclick="clearSchedule(event)" data-i18n="clear">Clear ✕</button>
                 </div>
                 <input type="hidden" id="schedule-time">
 
                 <div class="cal" id="cal" hidden>
                     <div class="cal-presets">
-                        <button type="button" class="cal-chip" onclick="preset('tonight')">Tonight, 2:00 AM</button>
-                        <button type="button" class="cal-chip" onclick="preset('tomorrow')">Tomorrow, 8:00 AM</button>
+                        <button type="button" class="cal-chip" onclick="preset('tonight')" data-i18n="preset_tonight">Tonight, 2:00 AM</button>
+                        <button type="button" class="cal-chip" onclick="preset('tomorrow')" data-i18n="preset_tomorrow">Tomorrow, 8:00 AM</button>
                     </div>
                     <div class="cal-head">
                         <button type="button" class="cal-nav" id="cal-prev" onclick="calNav(-1)" aria-label="Previous month">‹</button>
@@ -641,7 +641,7 @@
                     </div>
                     <div class="cal-grid" id="cal-grid"></div>
                     <div class="cal-time">
-                        <span class="cal-time-label">Time</span>
+                        <span class="cal-time-label" data-i18n="time">Time</span>
                         <div class="time-ctl">
                             <select class="time-sel" id="cal-hour"></select>
                             <span class="time-colon">:</span>
@@ -653,33 +653,33 @@
                         </div>
                     </div>
                     <div class="cal-actions">
-                        <button type="button" class="btn btn-ghost btn-sm" onclick="closeCal()">Cancel</button>
-                        <button type="button" class="btn btn-amber btn-sm" onclick="applyCal()">Set time</button>
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="closeCal()" data-i18n="cancel">Cancel</button>
+                        <button type="button" class="btn btn-amber btn-sm" onclick="applyCal()" data-i18n="set_time">Set time</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="actions">
-            <button class="btn btn-primary" onclick="printNow()">Print now</button>
-            <button class="btn btn-amber" onclick="schedulePrint()">Schedule</button>
+            <button class="btn btn-primary" onclick="printNow()" data-i18n="print_now">Print now</button>
+            <button class="btn btn-amber" onclick="schedulePrint()" data-i18n="schedule_btn">Schedule</button>
         </div>
     </section>
 
     <!-- Live logs -->
     <details class="card logs" id="logs-card">
         <summary>
-            <span class="logs-summary-label">Live logs</span>
+            <span class="logs-summary-label" data-i18n="live_logs">Live logs</span>
             <span class="logs-summary-meta" id="logs-meta"></span>
         </summary>
         <div class="logs-body">
             <div class="logs-toolbar">
-                <label class="toggle logs-toggle"><input type="checkbox" id="logs-autoscroll" checked> Auto-scroll</label>
-                <label class="toggle logs-toggle"><input type="checkbox" id="logs-pause"> Pause</label>
+                <label class="toggle logs-toggle"><input type="checkbox" id="logs-autoscroll" checked> <span data-i18n="autoscroll">Auto-scroll</span></label>
+                <label class="toggle logs-toggle"><input type="checkbox" id="logs-pause"> <span data-i18n="pause">Pause</span></label>
                 <div class="logs-toolbar-spacer"></div>
-                <button type="button" class="btn btn-ghost btn-sm" id="logs-copy" onclick="copyLogs()">Copy</button>
+                <button type="button" class="btn btn-ghost btn-sm" id="logs-copy" onclick="copyLogs()" data-i18n="copy">Copy</button>
             </div>
-            <div class="log-view" id="log-view"><div class="log-empty">Waiting for logs…</div></div>
+            <div class="log-view" id="log-view"><div class="log-empty" data-i18n="waiting_logs">Waiting for logs…</div></div>
         </div>
     </details>
 
@@ -690,48 +690,48 @@
     <!-- Schedule -->
     <section class="card">
         <div class="card-head">
-            <span class="eyebrow">Schedule</span>
-            <h2>Upcoming prints</h2>
+            <span class="eyebrow" data-i18n="schedule_eyebrow">Schedule</span>
+            <h2 data-i18n="upcoming_prints">Upcoming prints</h2>
         </div>
         <div class="wake-note" id="wake-note" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
             <span id="wake-note-text"></span>
         </div>
         <div id="jobs-list">
-            <div class="empty">Nothing scheduled yet</div>
+            <div class="empty" data-i18n="nothing_scheduled">Nothing scheduled yet</div>
         </div>
     </section>
 
     <!-- Guide -->
     <details class="card guide" open>
-        <summary>Setup guide</summary>
+        <summary data-i18n="setup_guide">Setup guide</summary>
         <div class="guide-body">
-            <h3>1. LAN Only Mode</h3>
-            <p>On the printer screen: <code>Settings › LAN Only Mode › ON</code>. Disconnects from the Bambu cloud so the printer accepts local commands only — BambuScheduler can't reach the printer without it.</p>
+            <h3 data-i18n="guide_1_h">1. LAN Only Mode</h3>
+            <p data-i18n-html="guide_1_p">On the printer screen: <code>Settings › LAN Only Mode › ON</code>. Disconnects from the Bambu cloud so the printer accepts local commands only — BambuScheduler can't reach the printer without it.</p>
 
-            <h3>2. Developer Mode</h3>
-            <p>On the printer screen: <code>Settings › LAN Only Mode › Developer Mode › ON</code>. Without it, the printer rejects MQTT print commands (error 84033543, "invalid signature").</p>
+            <h3 data-i18n="guide_2_h">2. Developer Mode</h3>
+            <p data-i18n-html="guide_2_p">On the printer screen: <code>Settings › LAN Only Mode › Developer Mode › ON</code>. Without it, the printer rejects MQTT print commands (error 84033543, "invalid signature").</p>
 
-            <h3>3. Connection details</h3>
-            <p>Enter these in the app's setup screen (the menu bar app), not a file:</p>
+            <h3 data-i18n="guide_3_h">3. Connection details</h3>
+            <p data-i18n="guide_3_p">Enter these in the app's setup screen (the menu bar app), not a file:</p>
             <ul>
-                <li><strong>IP address</strong> — <code>Settings › LAN Only Mode</code> on the printer</li>
-                <li><strong>Access Code</strong> — <code>Settings › LAN Only Mode</code> (8 digits)</li>
-                <li><strong>Serial Number</strong> — <code>Settings › Device Info</code> or the sticker</li>
+                <li data-i18n-html="guide_3_li1"><strong>IP address</strong> — <code>Settings › LAN Only Mode</code> on the printer</li>
+                <li data-i18n-html="guide_3_li2"><strong>Access Code</strong> — <code>Settings › LAN Only Mode</code> (8 digits)</li>
+                <li data-i18n-html="guide_3_li3"><strong>Serial Number</strong> — <code>Settings › Device Info</code> or the sticker</li>
             </ul>
 
-            <h3>4. Slice your file first</h3>
-            <p>The .3mf must be sliced in Bambu Studio before upload: <code>File › Export › Export plate sliced file (.3mf)</code>. Unsliced files are rejected.</p>
+            <h3 data-i18n="guide_4_h">4. Slice your file first</h3>
+            <p data-i18n-html="guide_4_p">The .3mf must be sliced in Bambu Studio before upload: <code>File › Export › Export plate sliced file (.3mf)</code>. Unsliced files are rejected.</p>
 
-            <h3>5. AMS mapping</h3>
-            <p>Pick the AMS slot holding the filament you want. Slots 0–3 map left to right on the AMS Lite. Turn off "Use AMS" to print from an external spool.</p>
+            <h3 data-i18n="guide_5_h">5. AMS mapping</h3>
+            <p data-i18n="guide_5_p">Pick the AMS slot holding the filament you want. Slots 0–3 map left to right on the AMS Lite. Turn off "Use AMS" to print from an external spool.</p>
 
-            <h3>6. Scheduling</h3>
-            <p>Choose a future time and hit Schedule. BambuScheduler uploads the file and starts the print at that moment — the app needs to stay running until then.</p>
+            <h3 data-i18n="guide_6_h">6. Scheduling</h3>
+            <p data-i18n="guide_6_p">Choose a future time and hit Schedule. BambuScheduler uploads the file and starts the print at that moment — the app needs to stay running until then.</p>
 
             <div class="wake-note" style="margin-top: 18px;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                <span>Keep this Mac <b>plugged into power</b> and <b>don't close the lid</b> while a print is scheduled. If the Mac sleeps, the scheduled print may not fire. The screen going dark is fine — BambuScheduler keeps the system awake even while the display sleeps.</span>
+                <span data-i18n-html="guide_wake">Keep this Mac <b>plugged into power</b> and <b>don't close the lid</b> while a print is scheduled. If the Mac sleeps, the scheduled print may not fire. The screen going dark is fine — BambuScheduler keeps the system awake even while the display sleeps.</span>
             </div>
         </div>
     </details>
@@ -748,14 +748,14 @@
 <div class="modal-backdrop" id="preview-modal" hidden>
     <div class="modal">
         <div class="modal-head">
-            <span class="modal-title" id="preview-title">Preview</span>
-            <button class="icon-btn" id="preview-close" title="Close" aria-label="Close">
+            <span class="modal-title" id="preview-title" data-i18n="preview">Preview</span>
+            <button class="icon-btn" id="preview-close" title="Close" aria-label="Close" data-i18n-title="close">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
         </div>
         <div class="modal-body">
             <img id="preview-img" alt="Model preview" hidden>
-            <div class="modal-msg" id="preview-msg">Loading preview…</div>
+            <div class="modal-msg" id="preview-msg" data-i18n="loading_preview">Loading preview…</div>
         </div>
     </div>
 </div>
@@ -767,29 +767,217 @@ let jobs = [];
 let activeState = "";
 let currentFile = null;
 
-const STATE_LABELS = {
-    IDLE: "Idle", FINISH: "Finished", RUNNING: "Printing",
-    PREPARE: "Preparing", PAUSE: "Paused", FAILED: "Failed", SLICING: "Slicing"
+/* ---- Localization ---- */
+let LANG = document.body.dataset.lang || "en";
+
+const I18N = {
+    en: {
+        connecting: "Connecting…", printer: "Printer", refresh: "Refresh",
+        waiting_printer: "Waiting for the printer…",
+        nozzle: "Nozzle", bed: "Bed", job: "Job",
+        pause: "Pause", resume: "Resume", abort: "Abort",
+        new_print: "New print", send_a_file: "Send a file",
+        dz_text: "<strong>Drop a .3mf file</strong> or click to browse",
+        must_slice: "Must be sliced in Bambu Studio",
+        ams_slot: "AMS slot", ams_empty: "Refresh the status to load AMS filaments",
+        use_ams: "Use AMS", timelapse: "Timelapse",
+        start_time_main: "Start time", start_time_hint: "— leave empty to print now",
+        pick_datetime: "Pick a date & time", clear: "Clear ✕",
+        preset_tonight: "Tonight, 2:00 AM", preset_tomorrow: "Tomorrow, 8:00 AM",
+        time: "Time", cancel: "Cancel", set_time: "Set time",
+        print_now: "Print now", schedule_btn: "Schedule",
+        live_logs: "Live logs", autoscroll: "Auto-scroll", copy: "Copy", waiting_logs: "Waiting for logs…",
+        schedule_eyebrow: "Schedule", upcoming_prints: "Upcoming prints", nothing_scheduled: "Nothing scheduled yet",
+        setup_guide: "Setup guide",
+        guide_1_h: "1. LAN Only Mode",
+        guide_1_p: "On the printer screen: <code>Settings › LAN Only Mode › ON</code>. Disconnects from the Bambu cloud so the printer accepts local commands only — BambuScheduler can't reach the printer without it.",
+        guide_2_h: "2. Developer Mode",
+        guide_2_p: "On the printer screen: <code>Settings › LAN Only Mode › Developer Mode › ON</code>. Without it, the printer rejects MQTT print commands (error 84033543, \"invalid signature\").",
+        guide_3_h: "3. Connection details",
+        guide_3_p: "Enter these in the app's setup screen (the menu bar app), not a file:",
+        guide_3_li1: "<strong>IP address</strong> — <code>Settings › LAN Only Mode</code> on the printer",
+        guide_3_li2: "<strong>Access Code</strong> — <code>Settings › LAN Only Mode</code> (8 digits)",
+        guide_3_li3: "<strong>Serial Number</strong> — <code>Settings › Device Info</code> or the sticker",
+        guide_4_h: "4. Slice your file first",
+        guide_4_p: "The .3mf must be sliced in Bambu Studio before upload: <code>File › Export › Export plate sliced file (.3mf)</code>. Unsliced files are rejected.",
+        guide_5_h: "5. AMS mapping",
+        guide_5_p: "Pick the AMS slot holding the filament you want. Slots 0–3 map left to right on the AMS Lite. Turn off \"Use AMS\" to print from an external spool.",
+        guide_6_h: "6. Scheduling",
+        guide_6_p: "Choose a future time and hit Schedule. BambuScheduler uploads the file and starts the print at that moment — the app needs to stay running until then.",
+        guide_wake: "Keep this Mac <b>plugged into power</b> and <b>don't close the lid</b> while a print is scheduled. If the Mac sleeps, the scheduled print may not fire. The screen going dark is fine — BambuScheduler keeps the system awake even while the display sleeps.",
+        preview: "Preview", close: "Close", loading_preview: "Loading preview…",
+        offline: "Offline", any_moment: "any moment", left: "left",
+        next_up: "Next up", in_word: "in", ready_to_print: "ready to print", no_log_entries: "No log entries yet",
+        last_print_finished: "Last print <b>finished</b> — nothing scheduled", idle_nothing: "Idle — nothing scheduled",
+        wake_note: "Keep this Mac <b>awake and plugged in</b> until <b>{when}</b> — lid open. The screen can turn off.",
+        due_now: "due now", preview_model: "Preview model", in_time: "in",
+        t_print_aborted: "Print aborted", t_print_paused: "Print paused", t_print_resumed: "Print resumed",
+        t_upload_first: "Upload a file first", t_sending: "Sending to printer…", t_print_started: "Print started",
+        t_pick_start: "Pick a start time", t_print_scheduled: "Print scheduled", t_pick_day: "Pick a day",
+        t_pick_future: "Pick a future time", t_schedule_canceled: "Schedule canceled",
+        t_uploading: "Uploading ", t_upload_complete: "Upload complete", t_upload_failed: "Upload failed",
+        t_logs_copied: "Logs copied", t_copy_failed: "Copy failed",
+        confirm_abort: "Abort the current print?", t_failed_start: "Failed to start",
+        state_IDLE: "Idle", state_FINISH: "Finished", state_RUNNING: "Printing",
+        state_PREPARE: "Preparing", state_PAUSE: "Paused", state_FAILED: "Failed", state_SLICING: "Slicing",
+        stage_1: "Auto bed leveling", stage_2: "Preheating bed", stage_3: "Sweeping XY",
+        stage_4: "Changing filament", stage_5: "Paused (M400)", stage_6: "Paused — filament runout",
+        stage_7: "Heating nozzle", stage_8: "Calibrating extrusion", stage_9: "Scanning bed surface",
+        stage_10: "Inspecting first layer", stage_11: "Identifying build plate", stage_12: "Calibrating LiDAR",
+        stage_13: "Homing toolhead", stage_14: "Cleaning nozzle", stage_15: "Checking nozzle temp",
+        stage_16: "Paused by user", stage_17: "Paused — front cover open", stage_18: "Calibrating LiDAR",
+        stage_19: "Calibrating flow", stage_20: "Paused — nozzle temp error", stage_21: "Paused — bed temp error",
+        stage_22: "Unloading filament", stage_23: "Paused — skip step", stage_24: "Loading filament",
+        stage_25: "Calibrating motor noise", stage_26: "Paused — AMS disconnected",
+        stage_27: "Paused — heat-break fan slow", stage_28: "Paused — chamber temp error",
+        stage_29: "Cooling chamber", stage_30: "Paused — user G-code", stage_31: "Motor noise calibration",
+        stage_32: "Paused — nozzle covered", stage_33: "Paused — cutter error",
+        stage_34: "Paused — first-layer error", stage_35: "Paused — nozzle clog",
+    },
+    "pt-BR": {
+        connecting: "Conectando…", printer: "Impressora", refresh: "Atualizar",
+        waiting_printer: "Aguardando a impressora…",
+        nozzle: "Bico", bed: "Mesa", job: "Trabalho",
+        pause: "Pausar", resume: "Retomar", abort: "Cancelar",
+        new_print: "Nova impressão", send_a_file: "Enviar um arquivo",
+        dz_text: "<strong>Solte um arquivo .3mf</strong> ou clique para procurar",
+        must_slice: "Precisa ser fatiado no Bambu Studio",
+        ams_slot: "Compartimento do AMS", ams_empty: "Atualize o status para carregar os filamentos do AMS",
+        use_ams: "Usar AMS", timelapse: "Timelapse",
+        start_time_main: "Horário de início", start_time_hint: "— deixe vazio para imprimir agora",
+        pick_datetime: "Escolha data e hora", clear: "Limpar ✕",
+        preset_tonight: "Hoje, 2:00", preset_tomorrow: "Amanhã, 8:00",
+        time: "Hora", cancel: "Cancelar", set_time: "Definir hora",
+        print_now: "Imprimir agora", schedule_btn: "Agendar",
+        live_logs: "Logs ao vivo", autoscroll: "Rolagem automática", copy: "Copiar", waiting_logs: "Aguardando logs…",
+        schedule_eyebrow: "Agenda", upcoming_prints: "Próximas impressões", nothing_scheduled: "Nada agendado ainda",
+        setup_guide: "Guia de configuração",
+        guide_1_h: "1. Modo Somente LAN",
+        guide_1_p: "Na tela da impressora: <code>Ajustes › Modo Somente LAN › LIGADO</code>. Desconecta da nuvem Bambu para que a impressora aceite apenas comandos locais — sem isso o BambuScheduler não alcança a impressora.",
+        guide_2_h: "2. Modo Desenvolvedor",
+        guide_2_p: "Na tela da impressora: <code>Ajustes › Modo Somente LAN › Modo Desenvolvedor › LIGADO</code>. Sem isso, a impressora rejeita os comandos de impressão MQTT (erro 84033543, \"assinatura inválida\").",
+        guide_3_h: "3. Dados de conexão",
+        guide_3_p: "Digite estes dados na tela de configuração do app (o app da barra de menus), não em um arquivo:",
+        guide_3_li1: "<strong>Endereço IP</strong> — <code>Ajustes › Modo Somente LAN</code> na impressora",
+        guide_3_li2: "<strong>Código de Acesso</strong> — <code>Ajustes › Modo Somente LAN</code> (8 dígitos)",
+        guide_3_li3: "<strong>Número de Série</strong> — <code>Ajustes › Informações do Dispositivo</code> ou o adesivo",
+        guide_4_h: "4. Fatie seu arquivo primeiro",
+        guide_4_p: "O .3mf precisa ser fatiado no Bambu Studio antes do envio: <code>Arquivo › Exportar › Exportar arquivo da placa fatiado (.3mf)</code>. Arquivos não fatiados são recusados.",
+        guide_5_h: "5. Mapeamento do AMS",
+        guide_5_p: "Escolha o compartimento do AMS com o filamento que você quer. Os compartimentos 0–3 vão da esquerda para a direita no AMS Lite. Desligue \"Usar AMS\" para imprimir de um carretel externo.",
+        guide_6_h: "6. Agendamento",
+        guide_6_p: "Escolha um horário futuro e toque em Agendar. O BambuScheduler envia o arquivo e inicia a impressão naquele momento — o app precisa ficar aberto até lá.",
+        guide_wake: "Mantenha este Mac <b>ligado na tomada</b> e <b>não feche a tampa</b> enquanto houver uma impressão agendada. Se o Mac dormir, a impressão agendada pode não disparar. A tela escurecer não tem problema — o BambuScheduler mantém o sistema acordado mesmo com o monitor desligado.",
+        preview: "Pré-visualização", close: "Fechar", loading_preview: "Carregando pré-visualização…",
+        offline: "Offline", any_moment: "a qualquer momento", left: "restantes",
+        next_up: "A seguir", in_word: "em", ready_to_print: "pronto para imprimir", no_log_entries: "Nenhum registro ainda",
+        last_print_finished: "Última impressão <b>concluída</b> — nada agendado", idle_nothing: "Ocioso — nada agendado",
+        wake_note: "Mantenha este Mac <b>acordado e na tomada</b> até <b>{when}</b> — tampa aberta. A tela pode desligar.",
+        due_now: "agora", preview_model: "Pré-visualizar modelo", in_time: "em",
+        t_print_aborted: "Impressão cancelada", t_print_paused: "Impressão pausada", t_print_resumed: "Impressão retomada",
+        t_upload_first: "Envie um arquivo primeiro", t_sending: "Enviando para a impressora…", t_print_started: "Impressão iniciada",
+        t_pick_start: "Escolha um horário de início", t_print_scheduled: "Impressão agendada", t_pick_day: "Escolha um dia",
+        t_pick_future: "Escolha um horário futuro", t_schedule_canceled: "Agendamento cancelado",
+        t_uploading: "Enviando ", t_upload_complete: "Envio concluído", t_upload_failed: "Falha no envio",
+        t_logs_copied: "Logs copiados", t_copy_failed: "Falha ao copiar",
+        confirm_abort: "Cancelar a impressão atual?", t_failed_start: "Falha ao iniciar",
+        state_IDLE: "Ocioso", state_FINISH: "Concluído", state_RUNNING: "Imprimindo",
+        state_PREPARE: "Preparando", state_PAUSE: "Pausado", state_FAILED: "Falhou", state_SLICING: "Fatiando",
+        stage_1: "Nivelando a mesa", stage_2: "Preaquecendo a mesa", stage_3: "Varredura XY",
+        stage_4: "Trocando filamento", stage_5: "Pausado (M400)", stage_6: "Pausado — fim do filamento",
+        stage_7: "Aquecendo o bico", stage_8: "Calibrando extrusão", stage_9: "Escaneando a mesa",
+        stage_10: "Inspecionando 1ª camada", stage_11: "Identificando a mesa", stage_12: "Calibrando LiDAR",
+        stage_13: "Referenciando o cabeçote", stage_14: "Limpando o bico", stage_15: "Verificando temp. do bico",
+        stage_16: "Pausado pelo usuário", stage_17: "Pausado — tampa aberta", stage_18: "Calibrando LiDAR",
+        stage_19: "Calibrando o fluxo", stage_20: "Pausado — erro temp. do bico", stage_21: "Pausado — erro temp. da mesa",
+        stage_22: "Descarregando filamento", stage_23: "Pausado — pular passo", stage_24: "Carregando filamento",
+        stage_25: "Calibrando ruído do motor", stage_26: "Pausado — AMS desconectado",
+        stage_27: "Pausado — ventoinha lenta", stage_28: "Pausado — erro temp. da câmara",
+        stage_29: "Resfriando a câmara", stage_30: "Pausado — G-code do usuário", stage_31: "Calibração de ruído",
+        stage_32: "Pausado — bico coberto", stage_33: "Pausado — erro do cortador",
+        stage_34: "Pausado — erro na 1ª camada", stage_35: "Pausado — bico entupido",
+    },
+    es: {
+        connecting: "Conectando…", printer: "Impresora", refresh: "Actualizar",
+        waiting_printer: "Esperando a la impresora…",
+        nozzle: "Boquilla", bed: "Cama", job: "Trabajo",
+        pause: "Pausar", resume: "Reanudar", abort: "Cancelar",
+        new_print: "Nueva impresión", send_a_file: "Enviar un archivo",
+        dz_text: "<strong>Suelta un archivo .3mf</strong> o haz clic para buscar",
+        must_slice: "Debe estar laminado en Bambu Studio",
+        ams_slot: "Ranura del AMS", ams_empty: "Actualiza el estado para cargar los filamentos del AMS",
+        use_ams: "Usar AMS", timelapse: "Timelapse",
+        start_time_main: "Hora de inicio", start_time_hint: "— déjalo vacío para imprimir ahora",
+        pick_datetime: "Elige fecha y hora", clear: "Borrar ✕",
+        preset_tonight: "Hoy, 2:00", preset_tomorrow: "Mañana, 8:00",
+        time: "Hora", cancel: "Cancelar", set_time: "Fijar hora",
+        print_now: "Imprimir ahora", schedule_btn: "Programar",
+        live_logs: "Registros en vivo", autoscroll: "Desplazamiento automático", copy: "Copiar", waiting_logs: "Esperando registros…",
+        schedule_eyebrow: "Agenda", upcoming_prints: "Próximas impresiones", nothing_scheduled: "Nada programado aún",
+        setup_guide: "Guía de configuración",
+        guide_1_h: "1. Modo Solo LAN",
+        guide_1_p: "En la pantalla de la impresora: <code>Ajustes › Modo Solo LAN › ON</code>. Se desconecta de la nube de Bambu para que la impresora acepte solo comandos locales — sin esto BambuScheduler no puede alcanzar la impresora.",
+        guide_2_h: "2. Modo Desarrollador",
+        guide_2_p: "En la pantalla de la impresora: <code>Ajustes › Modo Solo LAN › Modo Desarrollador › ON</code>. Sin esto, la impresora rechaza los comandos de impresión MQTT (error 84033543, \"firma inválida\").",
+        guide_3_h: "3. Datos de conexión",
+        guide_3_p: "Introduce estos datos en la pantalla de configuración de la app (la app de la barra de menús), no en un archivo:",
+        guide_3_li1: "<strong>Dirección IP</strong> — <code>Ajustes › Modo Solo LAN</code> en la impresora",
+        guide_3_li2: "<strong>Código de Acceso</strong> — <code>Ajustes › Modo Solo LAN</code> (8 dígitos)",
+        guide_3_li3: "<strong>Número de Serie</strong> — <code>Ajustes › Información del Dispositivo</code> o la etiqueta",
+        guide_4_h: "4. Lamina tu archivo primero",
+        guide_4_p: "El .3mf debe estar laminado en Bambu Studio antes de subirlo: <code>Archivo › Exportar › Exportar archivo de placa laminado (.3mf)</code>. Los archivos sin laminar se rechazan.",
+        guide_5_h: "5. Mapeo del AMS",
+        guide_5_p: "Elige la ranura del AMS con el filamento que quieres. Las ranuras 0–3 van de izquierda a derecha en el AMS Lite. Desactiva \"Usar AMS\" para imprimir desde un carrete externo.",
+        guide_6_h: "6. Programación",
+        guide_6_p: "Elige una hora futura y pulsa Programar. BambuScheduler sube el archivo e inicia la impresión en ese momento — la app debe seguir abierta hasta entonces.",
+        guide_wake: "Mantén este Mac <b>conectado a la corriente</b> y <b>no cierres la tapa</b> mientras haya una impresión programada. Si el Mac se duerme, la impresión programada puede no dispararse. Que la pantalla se apague está bien — BambuScheduler mantiene el sistema despierto aunque la pantalla se apague.",
+        preview: "Vista previa", close: "Cerrar", loading_preview: "Cargando vista previa…",
+        offline: "Sin conexión", any_moment: "en cualquier momento", left: "restantes",
+        next_up: "Siguiente", in_word: "en", ready_to_print: "listo para imprimir", no_log_entries: "Sin registros aún",
+        last_print_finished: "Última impresión <b>terminada</b> — nada programado", idle_nothing: "Inactivo — nada programado",
+        wake_note: "Mantén este Mac <b>despierto y conectado</b> hasta <b>{when}</b> — tapa abierta. La pantalla puede apagarse.",
+        due_now: "ahora", preview_model: "Vista previa del modelo", in_time: "en",
+        t_print_aborted: "Impresión cancelada", t_print_paused: "Impresión pausada", t_print_resumed: "Impresión reanudada",
+        t_upload_first: "Sube un archivo primero", t_sending: "Enviando a la impresora…", t_print_started: "Impresión iniciada",
+        t_pick_start: "Elige una hora de inicio", t_print_scheduled: "Impresión programada", t_pick_day: "Elige un día",
+        t_pick_future: "Elige una hora futura", t_schedule_canceled: "Programación cancelada",
+        t_uploading: "Subiendo ", t_upload_complete: "Subida completa", t_upload_failed: "Error al subir",
+        t_logs_copied: "Registros copiados", t_copy_failed: "Error al copiar",
+        confirm_abort: "¿Cancelar la impresión actual?", t_failed_start: "Error al iniciar",
+        state_IDLE: "Inactivo", state_FINISH: "Terminado", state_RUNNING: "Imprimiendo",
+        state_PREPARE: "Preparando", state_PAUSE: "Pausado", state_FAILED: "Falló", state_SLICING: "Laminando",
+        stage_1: "Nivelando la cama", stage_2: "Precalentando la cama", stage_3: "Barrido XY",
+        stage_4: "Cambiando filamento", stage_5: "Pausado (M400)", stage_6: "Pausado — sin filamento",
+        stage_7: "Calentando la boquilla", stage_8: "Calibrando extrusión", stage_9: "Escaneando la cama",
+        stage_10: "Inspeccionando 1ª capa", stage_11: "Identificando la cama", stage_12: "Calibrando LiDAR",
+        stage_13: "Referenciando el cabezal", stage_14: "Limpiando la boquilla", stage_15: "Verificando temp. boquilla",
+        stage_16: "Pausado por el usuario", stage_17: "Pausado — tapa abierta", stage_18: "Calibrando LiDAR",
+        stage_19: "Calibrando el flujo", stage_20: "Pausado — error temp. boquilla", stage_21: "Pausado — error temp. cama",
+        stage_22: "Descargando filamento", stage_23: "Pausado — omitir paso", stage_24: "Cargando filamento",
+        stage_25: "Calibrando ruido del motor", stage_26: "Pausado — AMS desconectado",
+        stage_27: "Pausado — ventilador lento", stage_28: "Pausado — error temp. cámara",
+        stage_29: "Enfriando la cámara", stage_30: "Pausado — G-code del usuario", stage_31: "Calibración de ruido",
+        stage_32: "Pausado — boquilla cubierta", stage_33: "Pausado — error del cortador",
+        stage_34: "Pausado — error 1ª capa", stage_35: "Pausado — boquilla obstruida",
+    },
 };
 
-// Fine-grained printer stage (stg_cur). -1/0 mean normal printing, so they fall
-// back to the coarse gcode_state label; the rest are the sub-states the printer
-// screen shows — heating, changing filament, calibrating, etc.
-const STAGE_LABELS = {
-    1: "Auto bed leveling", 2: "Preheating bed", 3: "Sweeping XY",
-    4: "Changing filament", 5: "Paused (M400)", 6: "Paused — filament runout",
-    7: "Heating nozzle", 8: "Calibrating extrusion", 9: "Scanning bed surface",
-    10: "Inspecting first layer", 11: "Identifying build plate", 12: "Calibrating LiDAR",
-    13: "Homing toolhead", 14: "Cleaning nozzle", 15: "Checking nozzle temp",
-    16: "Paused by user", 17: "Paused — front cover open", 18: "Calibrating LiDAR",
-    19: "Calibrating flow", 20: "Paused — nozzle temp error", 21: "Paused — bed temp error",
-    22: "Unloading filament", 23: "Paused — skip step", 24: "Loading filament",
-    25: "Calibrating motor noise", 26: "Paused — AMS disconnected",
-    27: "Paused — heat-break fan slow", 28: "Paused — chamber temp error",
-    29: "Cooling chamber", 30: "Paused — user G-code", 31: "Motor noise calibration",
-    32: "Paused — nozzle covered", 33: "Paused — cutter error",
-    34: "Paused — first-layer error", 35: "Paused — nozzle clog"
-};
+function t(key) {
+    return (I18N[LANG] && I18N[LANG][key]) || I18N.en[key] || key;
+}
+
+// Coarse state label (falls back to the raw code for unknown states).
+function stateLabel(state) { return I18N.en["state_" + state] ? t("state_" + state) : state; }
+// Fine-grained stage label, or null when the code isn't a distinct stage.
+function stageLabel(stg) { return I18N.en["stage_" + stg] ? t("stage_" + stg) : null; }
+
+// Apply translations to all tagged static elements.
+function applyI18n() {
+    document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+    document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); });
+    document.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = t(el.dataset.i18nTitle); });
+}
+
 const $ = id => document.getElementById(id);
 
 function toast(msg, ok = true) {
@@ -808,7 +996,7 @@ async function api(url, body = null) {
 
 function fmtDuration(mins) {
     mins = Math.max(0, Math.round(mins));
-    if (mins < 1) return "any moment";
+    if (mins < 1) return t("any_moment");
     const d = Math.floor(mins / 1440), h = Math.floor((mins % 1440) / 60), m = mins % 60;
     if (d > 0) return `${d}d ${h}h`;
     if (h > 0) return `${h}h ${m}m`;
@@ -817,8 +1005,13 @@ function fmtDuration(mins) {
 
 /* ---- Status ---- */
 function updateStatus(data) {
+    // Language can change from the app settings; re-apply if the backend reports a switch.
+    if (data.language && data.language !== LANG) {
+        LANG = data.language;
+        applyI18n();
+    }
     const hero = $('hero');
-    const name = data.printer_name || "Printer";
+    const name = data.printer_name || t("printer");
     $('conn-name').textContent = name;
 
     const s = data.status;
@@ -826,9 +1019,9 @@ function updateStatus(data) {
         activeState = "";
         hero.dataset.state = "";
         $('conn-dot').style.background = "var(--text-faint)";
-        $('s-state').textContent = "Offline";
+        $('s-state').textContent = t("offline");
         setActive(false);
-        $('idle-text').innerHTML = "Waiting for the printer…";
+        $('idle-text').innerHTML = t("waiting_printer");
         $('s-nozzle').textContent = "—";
         $('s-bed').textContent = "—";
         $('s-task').textContent = "—";
@@ -842,8 +1035,8 @@ function updateStatus(data) {
     hero.dataset.state = state;
     // While printing/paused, prefer the fine-grained stage (e.g. "Changing
     // filament") over the coarse "Printing"; fall back when it's just printing.
-    const stageLabel = (state === "RUNNING" || state === "PAUSE") ? STAGE_LABELS[s.stg_cur] : null;
-    $('s-state').textContent = stageLabel || STATE_LABELS[state] || state;
+    const stage = (state === "RUNNING" || state === "PAUSE") ? stageLabel(s.stg_cur) : null;
+    $('s-state').textContent = stage || stateLabel(state);
     $('conn-dot').style.background = state === "FAILED" ? "var(--fail)"
         : state === "RUNNING" ? "var(--run)" : "var(--bambu)";
 
@@ -859,7 +1052,7 @@ function updateStatus(data) {
         $('progress-fill').style.width = pct + "%";
         $('nozzle').style.left = pct + "%";
         $('s-progress').innerHTML = pct + "<small>%</small>";
-        $('s-remaining').textContent = s.remaining_time > 0 ? fmtDuration(s.remaining_time) + " left" : "—";
+        $('s-remaining').textContent = s.remaining_time > 0 ? fmtDuration(s.remaining_time) + " " + t("left") : "—";
         $('controls').classList.remove('hidden');
         $('btn-pause').classList.toggle('hidden', state !== "RUNNING");
         $('btn-resume').classList.toggle('hidden', state !== "PAUSE");
@@ -887,11 +1080,11 @@ function setActive(on) {
 function renderIdle() {
     const upcoming = jobs.filter(j => j.ms > 0).sort((a, b) => a.ms - b.ms)[0];
     if (upcoming) {
-        $('idle-text').innerHTML = `Next up <b>${escapeHtml(upcoming.name)}</b> <span class="chip">in ${fmtDuration(upcoming.ms / 60000)}</span>`;
+        $('idle-text').innerHTML = `${t("next_up")} <b>${escapeHtml(upcoming.name)}</b> <span class="chip">${t("in_word")} ${fmtDuration(upcoming.ms / 60000)}</span>`;
     } else if (activeState === "FINISH") {
-        $('idle-text').innerHTML = "Last print <b>finished</b> — nothing scheduled";
+        $('idle-text').innerHTML = t("last_print_finished");
     } else {
-        $('idle-text').innerHTML = "Idle — nothing scheduled";
+        $('idle-text').innerHTML = t("idle_nothing");
     }
 }
 
@@ -899,7 +1092,7 @@ function renderAMS() {
     const c = $('ams-slots');
     c.innerHTML = '';
     if (!amsTrays.length) {
-        c.innerHTML = '<div class="ams-empty-note">Refresh the status to load AMS filaments</div>';
+        c.innerHTML = `<div class="ams-empty-note">${t("ams_empty")}</div>`;
         return;
     }
     amsTrays.forEach(t => {
@@ -924,34 +1117,34 @@ async function refreshStatus(manual) {
 }
 
 /* ---- Controls ---- */
-function confirmStop() { if (confirm('Abort the current print?')) stopPrint(); }
-async function stopPrint() { await api('/api/stop', {}); toast('Print aborted'); setTimeout(refreshStatus, 1500); }
-async function pausePrint() { await api('/api/pause', {}); toast('Print paused'); setTimeout(refreshStatus, 1500); }
-async function resumePrint() { await api('/api/resume', {}); toast('Print resumed'); setTimeout(refreshStatus, 1500); }
+function confirmStop() { if (confirm(t('confirm_abort'))) stopPrint(); }
+async function stopPrint() { await api('/api/stop', {}); toast(t('t_print_aborted')); setTimeout(refreshStatus, 1500); }
+async function pausePrint() { await api('/api/pause', {}); toast(t('t_print_paused')); setTimeout(refreshStatus, 1500); }
+async function resumePrint() { await api('/api/resume', {}); toast(t('t_print_resumed')); setTimeout(refreshStatus, 1500); }
 
 /* ---- Print / schedule ---- */
 async function printNow() {
     const filename = currentFile;
-    if (!filename) { toast('Upload a file first', false); return; }
-    toast('Sending to printer…');
+    if (!filename) { toast(t('t_upload_first'), false); return; }
+    toast(t('t_sending'));
     const r = await api('/api/print', {
         filename, use_ams: $('use-ams').checked,
         ams_slot: selectedSlot, timelapse: $('timelapse').checked
     });
-    if (r.ok) { toast('Print started'); setTimeout(refreshStatus, 2500); }
-    else toast(r.error || 'Failed to start', false);
+    if (r.ok) { toast(t('t_print_started')); setTimeout(refreshStatus, 2500); }
+    else toast(r.error || t('t_failed_start'), false);
 }
 
 async function schedulePrint() {
     const filename = currentFile;
     const scheduleTime = $('schedule-time').value;
-    if (!filename) { toast('Upload a file first', false); return; }
-    if (!scheduleTime) { toast('Pick a start time', false); return; }
+    if (!filename) { toast(t('t_upload_first'), false); return; }
+    if (!scheduleTime) { toast(t('t_pick_start'), false); return; }
     const r = await api('/api/print', {
         filename, use_ams: $('use-ams').checked, ams_slot: selectedSlot,
         timelapse: $('timelapse').checked, schedule_time: scheduleTime
     });
-    if (r.ok) { toast('Print scheduled'); resetSchedule(); fetchJobs(); }
+    if (r.ok) { toast(t('t_print_scheduled')); resetSchedule(); fetchJobs(); }
     else toast(r.error || 'Could not schedule', false);
 }
 
@@ -1050,10 +1243,10 @@ function commit(dt) {
 }
 
 function applyCal() {
-    if (!CAL.sel) { toast('Pick a day', false); return; }
+    if (!CAL.sel) { toast(t('t_pick_day'), false); return; }
     const { h, m } = readTime();
     const dt = new Date(CAL.sel.getFullYear(), CAL.sel.getMonth(), CAL.sel.getDate(), h, m, 0);
-    if (dt.getTime() <= Date.now()) { toast('Pick a future time', false); return; }
+    if (dt.getTime() <= Date.now()) { toast(t('t_pick_future'), false); return; }
     commit(dt);
     closeCal();
 }
@@ -1132,28 +1325,27 @@ function renderJobs() {
 
     if (!jobs.length) {
         note.hidden = true;
-        list.innerHTML = '<div class="empty">Nothing scheduled yet</div>';
+        list.innerHTML = `<div class="empty">${t('nothing_scheduled')}</div>`;
         return;
     }
 
     // Remind the user the Mac must stay awake until the last print fires.
     const latest = jobs.reduce((a, b) => (a.ms > b.ms ? a : b));
     const latestDt = new Date(latest.next_run.replace(' ', 'T'));
-    $('wake-note-text').innerHTML =
-        `Keep this Mac <b>awake and plugged in</b> until <b>${fmtWhen(latestDt)}</b> — lid open. The screen can turn off.`;
+    $('wake-note-text').innerHTML = t('wake_note').replace('{when}', `${fmtWhen(latestDt)}`);
     note.hidden = false;
     list.innerHTML = '';
     jobs.sort((a, b) => a.ms - b.ms).forEach(j => {
-        const when = j.ms > 0 ? "in " + fmtDuration(j.ms / 60000) : "due now";
+        const when = j.ms > 0 ? t('in_time') + " " + fmtDuration(j.ms / 60000) : t('due_now');
         const dot = j.ams_color ? `<span class="swatch" style="background:${j.ams_color}"></span>` : '';
         const row = document.createElement('div');
         row.className = 'row';
         row.innerHTML = `${dot}
-            <div class="row-main row-preview" title="Preview model">
+            <div class="row-main row-preview" title="${t('preview_model')}">
                 <div class="row-name">${escapeHtml(j.name)}</div>
                 <div class="row-sub"><span class="when">${when}</span> · ${j.next_run}</div>
             </div>
-            <button class="link-btn">Cancel</button>`;
+            <button class="link-btn">${t('cancel')}</button>`;
         row.querySelector('.row-preview').onclick = () => openPreview(j.name);
         row.querySelector('.link-btn').onclick = () => cancelJob(j.id);
         list.appendChild(row);
@@ -1162,7 +1354,7 @@ function renderJobs() {
 
 async function cancelJob(id) {
     await api('/api/cancel-job', { job_id: id });
-    toast('Schedule canceled');
+    toast(t('t_schedule_canceled'));
     fetchJobs();
 }
 
@@ -1190,19 +1382,19 @@ async function uploadFile(file) {
     if (!file) return;
     const form = new FormData();
     form.append('file', file);
-    toast('Uploading ' + file.name + '…');
+    toast(t('t_uploading') + file.name + '…');
     const r = await fetch('/api/upload', { method: 'POST', body: form });
     const data = await r.json();
-    if (data.ok) { toast('Upload complete'); addFile(data.filename); }
-    else toast(data.error || 'Upload failed', false);
+    if (data.ok) { toast(t('t_upload_complete')); addFile(data.filename); }
+    else toast(data.error || t('t_upload_failed'), false);
     $('file-input').value = '';
 }
 
 function setCurrentFile(name) {
     currentFile = name || null;
     $('dz-text').innerHTML = currentFile
-        ? `<strong>${escapeHtml(currentFile)}</strong> — ready to print`
-        : '<strong>Drop a .3mf file</strong> or click to browse';
+        ? `<strong>${escapeHtml(currentFile)}</strong> — ${t('ready_to_print')}`
+        : t('dz_text');
     $('upload-zone').classList.toggle('has-file', !!currentFile);
 }
 
@@ -1240,7 +1432,7 @@ async function fetchLogs() {
     const nearTop = view.scrollTop < 40;
 
     if (!lines.length) {
-        view.innerHTML = '<div class="log-empty">No log entries yet</div>';
+        view.innerHTML = `<div class="log-empty">${t('no_log_entries')}</div>`;
     } else {
         // Newest entries first (top of the panel).
         view.innerHTML = lines
@@ -1255,8 +1447,8 @@ async function fetchLogs() {
 
 function copyLogs() {
     navigator.clipboard.writeText(lastLogText).then(
-        () => toast('Logs copied'),
-        () => toast('Copy failed', false)
+        () => toast(t('t_logs_copied')),
+        () => toast(t('t_copy_failed'), false)
     );
 }
 
@@ -1270,6 +1462,7 @@ zone.addEventListener('dragleave', () => zone.classList.remove('over'));
 zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('over'); uploadFile(e.dataTransfer.files[0]); });
 
 /* Boot */
+applyI18n();
 refreshStatus();
 fetchJobs();
 setInterval(refreshStatus, 3000);

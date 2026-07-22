@@ -8,6 +8,8 @@ struct PrinterConfig: Codable {
     var accessCode: String
     var serial: String
     var printerName: String
+    // Optional so configs written before localization still decode; nil == "en".
+    var language: String?
 
     static let configDir = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/BambuScheduler")
@@ -183,15 +185,16 @@ struct SetupView: View {
     @State private var accessCode = ""
     @State private var serial = ""
     @State private var name = ""
+    @State private var language = "en"
     @State private var errorMsg = ""
     @State private var saving = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Printer Setup")
+                Text(L("Printer Setup", language))
                     .font(.headline)
-                Text("Find this info on your printer's display")
+                Text(L("Find this info on your printer's display", language))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -203,7 +206,7 @@ struct SetupView: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Printer IP")
+                    Text(L("Printer IP", language))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     TextField("192.168.1.100", text: $ip)
@@ -212,7 +215,7 @@ struct SetupView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Access Code")
+                    Text(L("Access Code", language))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     TextField("12345678", text: $accessCode)
@@ -221,7 +224,7 @@ struct SetupView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Serial Number")
+                    Text(L("Serial Number", language))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     TextField("01A00A000000000", text: $serial)
@@ -230,12 +233,26 @@ struct SetupView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Name (optional)")
+                    Text(L("Name (optional)", language))
                         .font(.caption)
                         .foregroundColor(.secondary)
                     TextField("My Printer", text: $name)
                         .textFieldStyle(.roundedBorder)
                         .font(.caption)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L("Language", language))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Picker("", selection: $language) {
+                        ForEach(supportedLanguages, id: \.code) { lang in
+                            Text(lang.name).tag(lang.code)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .font(.caption)
                 }
 
                 if !errorMsg.isEmpty {
@@ -251,7 +268,7 @@ struct SetupView: View {
 
             HStack {
                 if vm.showingSettings {
-                    Button("Cancel") {
+                    Button(L("Cancel", language)) {
                         vm.showingSettings = false
                     }
                 }
@@ -261,7 +278,7 @@ struct SetupView: View {
                         ProgressView()
                             .controlSize(.small)
                     } else {
-                        Text("Save")
+                        Text(L("Save", language))
                     }
                 }
                 .disabled(ip.isEmpty || accessCode.isEmpty || serial.isEmpty || saving)
@@ -279,6 +296,7 @@ struct SetupView: View {
                 accessCode = config.accessCode
                 serial = config.serial
                 name = config.printerName
+                language = config.language ?? "en"
             }
         }
     }
@@ -288,12 +306,14 @@ struct SetupView: View {
             printerIP: ip.trimmingCharacters(in: .whitespaces),
             accessCode: accessCode.trimmingCharacters(in: .whitespaces),
             serial: serial.trimmingCharacters(in: .whitespaces),
-            printerName: name.trimmingCharacters(in: .whitespaces)
+            printerName: name.trimmingCharacters(in: .whitespaces),
+            language: language
         )
         do {
             try config.save()
             errorMsg = ""
             saving = true
+            vm.language = language
             Task {
                 await vm.reloadBackendConfig()
                 saving = false
@@ -303,7 +323,7 @@ struct SetupView: View {
                 vm.refresh()
             }
         } catch {
-            errorMsg = "Failed to save: \(error.localizedDescription)"
+            errorMsg = L("Failed to save: ", language) + error.localizedDescription
         }
     }
 }
@@ -320,7 +340,7 @@ struct PrinterMenuView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(vm.printerName)
                         .font(.headline)
-                    StatusBadge(state: vm.status.gcode_state, stgCur: vm.status.stg_cur)
+                    StatusBadge(state: vm.status.gcode_state, stgCur: vm.status.stg_cur, lang: vm.language)
                 }
                 Spacer()
                 HStack(spacing: 12) {
@@ -347,7 +367,7 @@ struct PrinterMenuView: View {
             // Temperatures
             HStack(spacing: 0) {
                 VStack(spacing: 2) {
-                    Text("Nozzle")
+                    Text(L("Nozzle", vm.language))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     Text("\(vm.status.nozzle_temp, specifier: "%.0f")°C")
@@ -358,7 +378,7 @@ struct PrinterMenuView: View {
                 Divider().frame(height: 30)
 
                 VStack(spacing: 2) {
-                    Text("Bed")
+                    Text(L("Bed", vm.language))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     Text("\(vm.status.bed_temp, specifier: "%.0f")°C")
@@ -400,7 +420,8 @@ struct PrinterMenuView: View {
                         if vm.status.remaining_time > 0 {
                             let h = vm.status.remaining_time / 60
                             let m = vm.status.remaining_time % 60
-                            Text(h > 0 ? "\(h)h \(m)m left" : "\(m)m left")
+                            let left = L("left", vm.language)
+                            Text(h > 0 ? "\(h)h \(m)m \(left)" : "\(m)m \(left)")
                         }
                     }
                     .font(.caption)
@@ -408,12 +429,12 @@ struct PrinterMenuView: View {
 
                     HStack(spacing: 8) {
                         if vm.status.gcode_state == "RUNNING" {
-                            Button("Pause") { vm.pause() }
+                            Button(L("Pause", vm.language)) { vm.pause() }
                         } else {
-                            Button("Resume") { vm.resume() }
+                            Button(L("Resume", vm.language)) { vm.resume() }
                         }
                         Spacer()
-                        Button("Abort") { vm.stop() }
+                        Button(L("Abort", vm.language)) { vm.stop() }
                             .foregroundColor(.stateFail)
                     }
                     .font(.caption)
@@ -425,13 +446,13 @@ struct PrinterMenuView: View {
             // Scheduled Jobs
             Divider()
             VStack(alignment: .leading, spacing: 6) {
-                Text("SCHEDULE")
+                Text(L("SCHEDULE", vm.language))
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .tracking(1)
 
                 if vm.jobs.isEmpty {
-                    Text("No scheduled prints")
+                    Text(L("No scheduled prints", vm.language))
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .padding(.vertical, 4)
@@ -440,7 +461,7 @@ struct PrinterMenuView: View {
                     let laterJobs = vm.jobs.filter { !$0.isToday }
 
                     if !todayJobs.isEmpty {
-                        Text("Today")
+                        Text(L("Today", vm.language))
                             .font(.caption2.weight(.semibold))
                             .foregroundColor(.bambu)
                             .padding(.top, 2)
@@ -450,7 +471,7 @@ struct PrinterMenuView: View {
                     }
 
                     if !laterJobs.isEmpty {
-                        Text("Upcoming")
+                        Text(L("Upcoming", vm.language))
                             .font(.caption2.weight(.semibold))
                             .foregroundColor(.secondary)
                             .padding(.top, todayJobs.isEmpty ? 2 : 6)
@@ -467,11 +488,11 @@ struct PrinterMenuView: View {
 
             // Footer
             HStack {
-                Button("Open Web UI") {
+                Button(L("Open Web UI", vm.language)) {
                     NSWorkspace.shared.open(URL(string: "http://localhost:8080")!)
                 }
                 Spacer()
-                Button("Quit") {
+                Button(L("Quit", vm.language)) {
                     ServiceManager.stopBackend()
                     NSApplication.shared.terminate(nil)
                 }
@@ -487,6 +508,7 @@ struct PrinterMenuView: View {
 struct StatusBadge: View {
     let state: String
     var stgCur = -1
+    var lang = "en"
 
     var color: Color {
         switch state {
@@ -503,16 +525,17 @@ struct StatusBadge: View {
     var label: String {
         // While printing/paused, prefer the fine-grained stage (e.g. "Changing
         // filament") over the coarse "Printing"; fall back when it's just printing.
-        if state == "RUNNING" || state == "PAUSE", let stage = stageLabels[stgCur] {
+        if state == "RUNNING" || state == "PAUSE",
+           let stage = (stageLabelsByLang[lang] ?? stageLabelsByLang["en"])?[stgCur] {
             return stage
         }
         switch state {
-        case "IDLE": return "Idle"
-        case "FINISH": return "Finished"
-        case "RUNNING": return "Printing"
-        case "PREPARE": return "Preparing"
-        case "PAUSE": return "Paused"
-        case "FAILED": return "Error"
+        case "IDLE": return L("Idle", lang)
+        case "FINISH": return L("Finished", lang)
+        case "RUNNING": return L("Printing", lang)
+        case "PREPARE": return L("Preparing", lang)
+        case "PAUSE": return L("Paused", lang)
+        case "FAILED": return L("Error", lang)
         default: return state
         }
     }
@@ -543,22 +566,134 @@ struct PrinterStatus {
     var stg_cur = -1
 }
 
-/// Human labels for the printer's current-stage codes (stg_cur). Codes not
-/// listed (-1, 0) mean normal printing and fall back to the coarse state label.
-let stageLabels: [Int: String] = [
-    1: "Auto bed leveling", 2: "Preheating bed", 3: "Sweeping XY",
-    4: "Changing filament", 5: "Paused (M400)", 6: "Paused — filament runout",
-    7: "Heating nozzle", 8: "Calibrating extrusion", 9: "Scanning bed surface",
-    10: "Inspecting first layer", 11: "Identifying build plate", 12: "Calibrating LiDAR",
-    13: "Homing toolhead", 14: "Cleaning nozzle", 15: "Checking nozzle temp",
-    16: "Paused by user", 17: "Paused — front cover open", 18: "Calibrating LiDAR",
-    19: "Calibrating flow", 20: "Paused — nozzle temp error", 21: "Paused — bed temp error",
-    22: "Unloading filament", 23: "Paused — skip step", 24: "Loading filament",
-    25: "Calibrating motor noise", 26: "Paused — AMS disconnected",
-    27: "Paused — heat-break fan slow", 28: "Paused — chamber temp error",
-    29: "Cooling chamber", 30: "Paused — user G-code", 31: "Motor noise calibration",
-    32: "Paused — nozzle covered", 33: "Paused — cutter error",
-    34: "Paused — first-layer error", 35: "Paused — nozzle clog",
+// MARK: - Localization
+
+/// Languages offered in the app settings. Codes match the shared config.json.
+let supportedLanguages: [(code: String, name: String)] = [
+    ("en", "English"),
+    ("pt-BR", "Português (Brasil)"),
+    ("es", "Español"),
+]
+
+/// UI string table keyed by language then by English key. Missing keys fall
+/// back to the English string (and finally the key itself).
+let translations: [String: [String: String]] = [
+    "en": [:],  // English keys are their own values; handled by L(...) fallback.
+    "pt-BR": [
+        "Printer Setup": "Configuração da impressora",
+        "Find this info on your printer's display": "Encontre estas informações na tela da impressora",
+        "Printer IP": "IP da impressora",
+        "Access Code": "Código de acesso",
+        "Serial Number": "Número de série",
+        "Name (optional)": "Nome (opcional)",
+        "Language": "Idioma",
+        "Cancel": "Cancelar",
+        "Save": "Salvar",
+        "Failed to save: ": "Falha ao salvar: ",
+        "Nozzle": "Bico",
+        "Bed": "Mesa",
+        "Pause": "Pausar",
+        "Resume": "Retomar",
+        "Abort": "Cancelar impressão",
+        "SCHEDULE": "AGENDA",
+        "No scheduled prints": "Nenhuma impressão agendada",
+        "Today": "Hoje",
+        "Upcoming": "Próximas",
+        "Open Web UI": "Abrir Web UI",
+        "Quit": "Sair",
+        "left": "restantes",
+        "Idle": "Ocioso",
+        "Finished": "Concluído",
+        "Printing": "Imprimindo",
+        "Preparing": "Preparando",
+        "Paused": "Pausado",
+        "Error": "Erro",
+    ],
+    "es": [
+        "Printer Setup": "Configuración de la impresora",
+        "Find this info on your printer's display": "Encuentra estos datos en la pantalla de tu impresora",
+        "Printer IP": "IP de la impresora",
+        "Access Code": "Código de acceso",
+        "Serial Number": "Número de serie",
+        "Name (optional)": "Nombre (opcional)",
+        "Language": "Idioma",
+        "Cancel": "Cancelar",
+        "Save": "Guardar",
+        "Failed to save: ": "Error al guardar: ",
+        "Nozzle": "Boquilla",
+        "Bed": "Cama",
+        "Pause": "Pausar",
+        "Resume": "Reanudar",
+        "Abort": "Cancelar impresión",
+        "SCHEDULE": "AGENDA",
+        "No scheduled prints": "No hay impresiones programadas",
+        "Today": "Hoy",
+        "Upcoming": "Próximas",
+        "Open Web UI": "Abrir Web UI",
+        "Quit": "Salir",
+        "left": "restantes",
+        "Idle": "Inactivo",
+        "Finished": "Terminado",
+        "Printing": "Imprimiendo",
+        "Preparing": "Preparando",
+        "Paused": "Pausado",
+        "Error": "Error",
+    ],
+]
+
+/// Look up a UI string for the given language, falling back to English.
+func L(_ key: String, _ lang: String) -> String {
+    translations[lang]?[key] ?? key
+}
+
+/// Human labels for the printer's current-stage codes (stg_cur), per language.
+/// Codes not listed (-1, 0) mean normal printing and fall back to the state label.
+let stageLabelsByLang: [String: [Int: String]] = [
+    "en": [
+        1: "Auto bed leveling", 2: "Preheating bed", 3: "Sweeping XY",
+        4: "Changing filament", 5: "Paused (M400)", 6: "Paused — filament runout",
+        7: "Heating nozzle", 8: "Calibrating extrusion", 9: "Scanning bed surface",
+        10: "Inspecting first layer", 11: "Identifying build plate", 12: "Calibrating LiDAR",
+        13: "Homing toolhead", 14: "Cleaning nozzle", 15: "Checking nozzle temp",
+        16: "Paused by user", 17: "Paused — front cover open", 18: "Calibrating LiDAR",
+        19: "Calibrating flow", 20: "Paused — nozzle temp error", 21: "Paused — bed temp error",
+        22: "Unloading filament", 23: "Paused — skip step", 24: "Loading filament",
+        25: "Calibrating motor noise", 26: "Paused — AMS disconnected",
+        27: "Paused — heat-break fan slow", 28: "Paused — chamber temp error",
+        29: "Cooling chamber", 30: "Paused — user G-code", 31: "Motor noise calibration",
+        32: "Paused — nozzle covered", 33: "Paused — cutter error",
+        34: "Paused — first-layer error", 35: "Paused — nozzle clog",
+    ],
+    "pt-BR": [
+        1: "Nivelando a mesa", 2: "Preaquecendo a mesa", 3: "Varredura XY",
+        4: "Trocando filamento", 5: "Pausado (M400)", 6: "Pausado — fim do filamento",
+        7: "Aquecendo o bico", 8: "Calibrando extrusão", 9: "Escaneando a mesa",
+        10: "Inspecionando 1ª camada", 11: "Identificando a mesa", 12: "Calibrando LiDAR",
+        13: "Referenciando o cabeçote", 14: "Limpando o bico", 15: "Verificando temp. do bico",
+        16: "Pausado pelo usuário", 17: "Pausado — tampa aberta", 18: "Calibrando LiDAR",
+        19: "Calibrando o fluxo", 20: "Pausado — erro temp. do bico", 21: "Pausado — erro temp. da mesa",
+        22: "Descarregando filamento", 23: "Pausado — pular passo", 24: "Carregando filamento",
+        25: "Calibrando ruído do motor", 26: "Pausado — AMS desconectado",
+        27: "Pausado — ventoinha lenta", 28: "Pausado — erro temp. da câmara",
+        29: "Resfriando a câmara", 30: "Pausado — G-code do usuário", 31: "Calibração de ruído",
+        32: "Pausado — bico coberto", 33: "Pausado — erro do cortador",
+        34: "Pausado — erro na 1ª camada", 35: "Pausado — bico entupido",
+    ],
+    "es": [
+        1: "Nivelando la cama", 2: "Precalentando la cama", 3: "Barrido XY",
+        4: "Cambiando filamento", 5: "Pausado (M400)", 6: "Pausado — sin filamento",
+        7: "Calentando la boquilla", 8: "Calibrando extrusión", 9: "Escaneando la cama",
+        10: "Inspeccionando 1ª capa", 11: "Identificando la cama", 12: "Calibrando LiDAR",
+        13: "Referenciando el cabezal", 14: "Limpiando la boquilla", 15: "Verificando temp. boquilla",
+        16: "Pausado por el usuario", 17: "Pausado — tapa abierta", 18: "Calibrando LiDAR",
+        19: "Calibrando el flujo", 20: "Pausado — error temp. boquilla", 21: "Pausado — error temp. cama",
+        22: "Descargando filamento", 23: "Pausado — omitir paso", 24: "Cargando filamento",
+        25: "Calibrando ruido del motor", 26: "Pausado — AMS desconectado",
+        27: "Pausado — ventilador lento", 28: "Pausado — error temp. cámara",
+        29: "Enfriando la cámara", 30: "Pausado — G-code del usuario", 31: "Calibración de ruido",
+        32: "Pausado — boquilla cubierta", 33: "Pausado — error del cortador",
+        34: "Pausado — error 1ª capa", 35: "Pausado — boquilla obstruida",
+    ],
 ]
 
 struct ScheduledJob: Identifiable {
@@ -650,6 +785,7 @@ class PrinterViewModel: ObservableObject {
     @Published var loading = false
     @Published var needsSetup: Bool
     @Published var showingSettings = false
+    @Published var language = "en"
 
     private let baseURL = "http://localhost:8080"
     private var timer: Timer?
@@ -675,6 +811,9 @@ class PrinterViewModel: ObservableObject {
         needsSetup = config == nil || !(config!.isValid)
         if let config, !config.printerName.isEmpty {
             printerName = config.printerName
+        }
+        if let lang = config?.language, !lang.isEmpty {
+            language = lang
         }
         if !needsSetup {
             refresh()

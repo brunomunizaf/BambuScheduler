@@ -65,7 +65,7 @@ def _mask(secret) -> str:
 
 def _load_config():
     """Load printer config from GUI config file, falling back to .env."""
-    global PRINTER_IP, ACCESS_CODE, SERIAL, PRINTER_NAME
+    global PRINTER_IP, ACCESS_CODE, SERIAL, PRINTER_NAME, LANGUAGE
     if CONFIG_FILE.exists():
         log.info(f"Loading config from {CONFIG_FILE}")
         try:
@@ -74,6 +74,7 @@ def _load_config():
             ACCESS_CODE = cfg.get("accessCode") or os.getenv("PRINTER_ACCESS_CODE")
             SERIAL = cfg.get("serial") or os.getenv("PRINTER_SERIAL")
             PRINTER_NAME = cfg.get("printerName") or os.getenv("PRINTER_NAME")
+            LANGUAGE = cfg.get("language") or "en"
             log.info(
                 f"Config loaded: printerIP={PRINTER_IP!r}, serial={SERIAL!r}, "
                 f"accessCode={_mask(ACCESS_CODE)}, printerName={PRINTER_NAME!r}"
@@ -88,6 +89,7 @@ def _load_config():
     ACCESS_CODE = os.getenv("PRINTER_ACCESS_CODE")
     SERIAL = os.getenv("PRINTER_SERIAL")
     PRINTER_NAME = os.getenv("PRINTER_NAME")
+    LANGUAGE = "en"
     log.info(
         f"Config from env: printerIP={PRINTER_IP!r}, serial={SERIAL!r}, "
         f"accessCode={_mask(ACCESS_CODE)}, printerName={PRINTER_NAME!r}"
@@ -106,6 +108,7 @@ PRINTER_IP = None
 ACCESS_CODE = None
 SERIAL = None
 PRINTER_NAME = None
+LANGUAGE = "en"
 _load_config()
 UPLOAD_DIR = APP_SUPPORT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -487,7 +490,7 @@ def index():
             "next_run": str(job.next_run_time.strftime("%Y-%m-%d %H:%M:%S")) if job.next_run_time else "?",
             "args": job.args,
         })
-    return render_template("index.html", files=filenames, jobs=jobs)
+    return render_template("index.html", files=filenames, jobs=jobs, lang=LANGUAGE)
 
 
 @app.route("/api/status")
@@ -498,6 +501,7 @@ def api_status():
             "status": printer_state["status"],
             "ams_trays": printer_state["ams_trays"],
             "printer_name": printer_state["printer_name"],
+            "language": LANGUAGE,
         })
 
 
