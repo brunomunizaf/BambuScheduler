@@ -587,6 +587,8 @@
         <div class="error-banner hidden" id="error-banner"></div>
     </section>
 
+    <div class="manage">
+
     <!-- New print -->
     <section class="card">
         <div class="card-head">
@@ -664,23 +666,6 @@
         </div>
     </section>
 
-    <div class="manage">
-
-    <!-- Schedule -->
-    <section class="card">
-        <div class="card-head">
-            <span class="eyebrow">Schedule</span>
-            <h2>Upcoming prints</h2>
-        </div>
-        <div class="wake-note" id="wake-note" hidden>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            <span id="wake-note-text"></span>
-        </div>
-        <div id="jobs-list">
-            <div class="empty">Nothing scheduled yet</div>
-        </div>
-    </section>
-
     <!-- Live logs -->
     <details class="card logs" id="logs-card">
         <summary>
@@ -697,6 +682,25 @@
             <div class="log-view" id="log-view"><div class="log-empty">Waiting for logs…</div></div>
         </div>
     </details>
+
+    </div><!-- left column -->
+
+    <div class="manage">
+
+    <!-- Schedule -->
+    <section class="card">
+        <div class="card-head">
+            <span class="eyebrow">Schedule</span>
+            <h2>Upcoming prints</h2>
+        </div>
+        <div class="wake-note" id="wake-note" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span id="wake-note-text"></span>
+        </div>
+        <div id="jobs-list">
+            <div class="empty">Nothing scheduled yet</div>
+        </div>
+    </section>
 
     <!-- Guide -->
     <details class="card guide" open>
@@ -1211,18 +1215,20 @@ async function fetchLogs() {
     lastLogText = joined;
 
     const view = $('log-view');
-    const nearBottom = view.scrollHeight - view.scrollTop - view.clientHeight < 40;
+    const nearTop = view.scrollTop < 40;
 
     if (!lines.length) {
         view.innerHTML = '<div class="log-empty">No log entries yet</div>';
     } else {
+        // Newest entries first (top of the panel).
         view.innerHTML = lines
+            .slice().reverse()
             .map(l => `<span class="log-line ${logLevelClass(l)}">${escapeHtml(l)}</span>`)
             .join('\n');
     }
     $('logs-meta').textContent = lines.length ? `${lines.length} lines` : '';
 
-    if ($('logs-autoscroll').checked && nearBottom) view.scrollTop = view.scrollHeight;
+    if ($('logs-autoscroll').checked && nearTop) view.scrollTop = 0;
 }
 
 function copyLogs() {
