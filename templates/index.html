@@ -148,10 +148,18 @@
         .layerbar-fill {
             height: 100%; width: 0%;
             background:
-                repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 5px, transparent 5px 10px),
+                repeating-linear-gradient(45deg, rgba(255,255,255,.16) 0 8px, transparent 8px 16px),
                 linear-gradient(90deg, var(--bambu) 0%, var(--bambu-bright) 100%);
+            background-size: 22.6px 22.6px, 100% 100%;
             border-radius: 999px;
             transition: width .6s cubic-bezier(.4,0,.2,1);
+            animation: barber 0.8s linear infinite;
+        }
+        @keyframes barber { to { background-position: -22.6px 0, 0 0; } }
+        /* Freeze the stripes when the print is paused. */
+        .hero[data-state="PAUSE"] .layerbar-fill { animation-play-state: paused; }
+        @media (prefers-reduced-motion: reduce) {
+            .layerbar-fill { animation: none; }
         }
         .nozzle {
             position: absolute; top: -9px; left: 0%;
@@ -171,7 +179,6 @@
         }
         .progress-meta {
             display: flex; align-items: baseline; justify-content: space-between;
-            margin-top: 14px;
         }
         .pct { font-family: var(--font-data); font-size: 2rem; font-weight: 600; letter-spacing: -.03em; }
         .pct small { font-size: .95rem; color: var(--text-dim); margin-left: 2px; }
@@ -471,31 +478,25 @@
             </button>
         </div>
 
+        <!-- Progress bar: full width, above the data band -->
+        <div id="active-block" class="hidden">
+            <div class="progress">
+                <div class="layerbar">
+                    <div class="layerbar-track"><div class="layerbar-fill" id="progress-fill"></div></div>
+                    <div class="nozzle" id="nozzle"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data band: metrics (or idle line) on the left, readouts on the right -->
         <div class="hero-row">
             <div class="hero-left">
-                <!-- Active print -->
-                <div id="active-block" class="hidden">
-                    <div class="progress">
-                        <div class="layerbar">
-                            <div class="layerbar-track"><div class="layerbar-fill" id="progress-fill"></div></div>
-                            <div class="nozzle" id="nozzle"></div>
-                        </div>
-                        <div class="progress-meta">
-                            <span class="pct" id="s-progress">0<small>%</small></span>
-                            <span class="eta" id="s-remaining">—</span>
-                        </div>
-                    </div>
+                <div class="progress-meta hidden" id="active-meta">
+                    <span class="pct" id="s-progress">0<small>%</small></span>
+                    <span class="eta" id="s-remaining">—</span>
                 </div>
-
-                <!-- Idle / offline -->
                 <div id="idle-block" class="hero-idle">
                     <span id="idle-text">Waiting for the printer…</span>
-                </div>
-
-                <div class="controls hidden" id="controls">
-                    <button class="btn btn-ghost" id="btn-pause" onclick="pausePrint()">Pause</button>
-                    <button class="btn btn-ghost hidden" id="btn-resume" onclick="resumePrint()">Resume</button>
-                    <button class="btn btn-danger" onclick="confirmStop()">Abort</button>
                 </div>
             </div>
 
@@ -504,6 +505,12 @@
                 <div class="ro"><span class="ro-label">Bed</span><span class="ro-val" id="s-bed">—</span></div>
                 <div class="ro"><span class="ro-label">Job</span><span class="ro-val ro-task" id="s-task">—</span></div>
             </div>
+        </div>
+
+        <div class="controls hidden" id="controls">
+            <button class="btn btn-ghost" id="btn-pause" onclick="pausePrint()">Pause</button>
+            <button class="btn btn-ghost hidden" id="btn-resume" onclick="resumePrint()">Resume</button>
+            <button class="btn btn-danger" onclick="confirmStop()">Abort</button>
         </div>
 
         <div class="error-banner hidden" id="error-banner"></div>
@@ -653,6 +660,11 @@
 
             <h3>6. Scheduling</h3>
             <p>Choose a future time and hit Schedule. BambuScheduler uploads the file and starts the print at that moment — the app needs to stay running until then.</p>
+
+            <div class="wake-note" style="margin-top: 18px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>Keep this Mac <b>plugged into power</b> and <b>don't close the lid</b> while a print is scheduled. If the Mac sleeps, the scheduled print may not fire. The screen going dark is fine — BambuScheduler keeps the system awake even while the display sleeps.</span>
+            </div>
         </div>
     </details>
 
@@ -761,6 +773,7 @@ function updateStatus(data) {
 
 function setActive(on) {
     $('active-block').classList.toggle('hidden', !on);
+    $('active-meta').classList.toggle('hidden', !on);
     $('idle-block').classList.toggle('hidden', on);
 }
 
