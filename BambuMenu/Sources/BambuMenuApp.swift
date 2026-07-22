@@ -1,4 +1,5 @@
 import SwiftUI
+import IOKit.pwr_mgt
 
 // MARK: - Config
 
@@ -128,6 +129,35 @@ enum ServiceManager {
         pkill.standardError = FileHandle.nullDevice
         try? pkill.run()
         pkill.waitUntilExit()
+    }
+}
+
+// MARK: - Power Manager
+
+/// Prevents the Mac from idle-sleeping while a scheduled print is pending, so
+/// the app is still running to fire it at the start time. Uses
+/// PreventUserIdleSystemSleep, which keeps the *system* awake but lets the
+/// display sleep normally — the screen still goes dark. The assertion is
+/// released as soon as no jobs remain, and the OS releases it automatically if
+/// the app quits.
+enum PowerManager {
+    private static var assertionID: IOPMAssertionID = 0
+    private static var held = false
+
+    static func setKeepAwake(_ on: Bool) {
+        if on && !held {
+            let reason = "A scheduled print is waiting to start" as CFString
+            let result = IOPMAssertionCreateWithName(
+                kIOPMAssertionTypePreventUserIdleSystemSleep as CFString,
+                IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                reason,
+                &assertionID)
+            held = (result == kIOReturnSuccess)
+        } else if !on && held {
+            IOPMAssertionRelease(assertionID)
+            assertionID = 0
+            held = false
+        }
     }
 }
 
@@ -710,6 +740,11 @@ class PrinterViewModel: ObservableObject {
             let color = j["ams_color"] as? String
             return ScheduledJob(id: id, name: name, next_run: next, amsColor: color)
         }
+
+        // Keep the Mac awake while a scheduled print is waiting to fire, so it
+        // doesn't sleep past the start time. The display is still allowed to
+        // sleep — only the system stays awake.
+        PowerManager.setKeepAwake(!jobs.isEmpty)
     }
 
     private func postAction(_ path: String) async {
